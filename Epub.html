@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EPUB 閱讀器 (優化版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
+    <style>
+        :root {
+            --reader-bg-light: #ffffff;
+            --reader-text-light: #1f2937;
+            --reader-bg-dark: #2d3748;
+            --reader-text-dark: #e2e8f0;
+            --accent-color: #4f46e5;
+            --accent-color-hover: #4338ca;
+            --disabled-color: #a5b4fc;
+            --danger-color: #ef4444;
+            --danger-color-hover: #dc2626;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f2f5; /* 更柔和的背景 */
+            margin: 0;
+            padding: 1rem;
+            box-sizing: border-box;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        body.night-mode {
+            background-color: #1a202c; /* 夜間模式主背景 */
+            color: var(--reader-text-dark);
+        }
+        #reader-ui-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #viewer-container {
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            border-radius: 0.75rem;
+            overflow: hidden;
+            background-color: var(--reader-bg-light);
+            width: 100%;
+            max-width: 800px;
+            transition: max-width 0.3s ease-in-out, height 0.3s ease-in-out;
+        }
+        body.night-mode #viewer-container {
+            background-color: var(--reader-bg-dark);
+        }
+        #viewer {
+            width: 100%;
+            height: 70vh;
+            background-color: var(--reader-bg-light);
+            border: 1px solid #e2e8f0; /* 淺灰邊框 */
+            transition: background-color 0.3s;
+        }
+        body.night-mode #viewer {
+            background-color: var(--reader-bg-dark); /* 夜間模式閱讀器背景 */
+            border-color: #4a5568; /* 夜間模式邊框 */
+        }
+        .control-button {
+            background-color: var(--accent-color);
+            color: white;
+            padding: 0.6rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+            border: none;
+            box-shadow: 0 2px 4px -1px rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center; /* 使圖示和文字在按鈕內居中 */
+            gap: 0.5rem;
+        }
+        .control-button svg {
+            width: 1.25em; /* 圖示大小基於字體大小 */
+            height: 1.25em;
+        }
+        .control-button:hover {
+            background-color: var(--accent-color-hover);
+            box-shadow: 0 4px 8px -1px rgb(0 0 0 / 0.15), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .control-button:active {
+            transform: translateY(1px);
+        }
+        .control-button:disabled {
+            background-color: var(--disabled-color);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .control-button.danger { /* 用於刪除等危險操作 */
+            background-color: var(--danger-color);
+        }
+        .control-button.danger:hover {
+            background-color: var(--danger-color-hover);
+        }
+        .panel {
+            background-color: var(--reader-bg-light);
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            margin-top: 1rem;
+            width: 100%;
+            max-width: 800px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        body.night-mode .panel {
+            background-color: var(--reader-bg-dark);
+            color: var(--reader-text-dark);
+        }
+        body.night-mode .panel label, body.night-mode .panel h3, body.night-mode .panel h4 {
+            color: var(--reader-text-dark);
+        }
+        body.night-mode .panel select, body.night-mode .panel input:not([type="color"]), body.night-mode .panel button:not(.control-button) {
+             background-color: #4a5568; /* 夜間模式輸入框背景 */
+             color: var(--reader-text-dark);
+             border-color: #718096; /* 夜間模式輸入框邊框 */
+        }
+        body.night-mode .panel input[type="color"] { /* 夜間模式顏色選擇器邊框 */
+            border: 1px solid #718096;
+        }
+        #message-box {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            color: white; padding: 1rem 1.5rem; border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            z-index: 2100; display: none; font-weight: 500;
+            text-align: center;
+        }
+        #progress-container {
+            width: 100%; max-width: 800px; margin: 0.5rem auto;
+            text-align: center; font-size: 0.9rem; color: #4b5563; /* 進度文字顏色 */
+        }
+        body.night-mode #progress-container { color: #a0aec0; } /* 夜間模式進度文字顏色 */
+
+        #customization-panel-content {
+            max-height: 1000px; /* 確保動畫有足夠空間 */
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, opacity 0.5s ease-in-out, padding 0.5s ease-in-out, margin 0.5s ease-in-out;
+            opacity: 1;
+        }
+        #customization-panel-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+            padding-top: 0 !important; padding-bottom: 0 !important; margin-top:0 !important;
+        }
+        .panel-toggle-button svg { transition: transform 0.3s; }
+        .panel-toggle-button.collapsed svg { transform: rotate(-90deg); }
+
+        #bookmarks-list .bookmark-delete-button { /* 特定給書籤刪除按鈕的樣式 */
+            background-color: var(--danger-color);
+        }
+        #bookmarks-list .bookmark-delete-button:hover {
+            background-color: var(--danger-color-hover);
+        }
+        #bookmarks-list li {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.6rem 0.25rem; /* 調整書籤列表項的 padding */
+            border-bottom: 1px solid #e5e7eb; /* 分隔線 */
+        }
+        body.night-mode #bookmarks-list li { border-bottom-color: #4a5568; }
+        #bookmarks-list li:last-child { border-bottom: none; }
+        #bookmarks-list .bookmark-text {
+            cursor: pointer;
+            color: var(--accent-color);
+            transition: color 0.2s;
+            word-break: break-all; /* 防止長書籤名稱溢出 */
+        }
+        #bookmarks-list .bookmark-text:hover { color: var(--accent-color-hover); }
+        body.night-mode #bookmarks-list .bookmark-text { color: #90cdf4; }
+        body.night-mode #bookmarks-list .bookmark-text:hover { color: #63b3ed; }
+
+        #toc-list li a.active {
+            font-weight: 600; /* 目錄高亮項加粗 */
+            color: var(--accent-color) !important; /* 確保高亮顏色優先 */
+        }
+        body.night-mode #toc-list li a.active { color: #90cdf4 !important; }
+        /* 檔案選擇器樣式調整 */
+        .file-selector-wrapper {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .file-selector-wrapper.book-loaded {
+            opacity: 0.7; /* 書籍載入後稍微降低透明度 */
+        }
+        .file-selector-wrapper.book-loaded:hover {
+            opacity: 1; /* 滑鼠懸停時恢復 */
+        }
+
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="reader-ui-container">
+    <h1 class="text-3xl font-bold my-5 text-gray-800 body:night-mode:text-gray-200">EPUB 閱讀器</h1>
+
+    <div id="file-selector-wrapper" class="mb-6 w-full max-w-md file-selector-wrapper">
+        <label for="epub-file" class="block mb-2 text-sm font-medium text-gray-900 body:night-mode:text-gray-300">選擇 EPUB 檔案：</label>
+        <input type="file" id="epub-file" accept=".epub" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none p-2.5 body:night-mode:bg-gray-700 body:night-mode:border-gray-600 body:night-mode:placeholder-gray-400 body:night-mode:text-white">
+    </div>
+
+    <div id="viewer-container" class="w-full mb-2 relative">
+        <div id="viewer"></div>
+        <div id="loader" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80" style="display: none;">
+            <svg class="animate-spin h-12 w-12 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="ml-4 text-lg text-indigo-700 font-semibold">正在載入書籍，請稍候...</p>
+        </div>
+    </div>
+
+    <div id="progress-container">
+        <span id="progress-text">未載入書籍</span>
+    </div>
+
+    <div class="flex space-x-3 my-3 main-controls">
+        <button id="prev" class="control-button" aria-label="上一頁">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+            上一頁
+        </button>
+        <button id="next" class="control-button" aria-label="下一頁">
+            下一頁
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+        </button>
+        <button id="add-bookmark" class="control-button" aria-label="新增書籤">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.5 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" /></svg>
+            書籤
+        </button>
+        </div>
+
+    <div id="toc-container" class="panel" style="display: none;">
+        <h3 class="text-xl font-semibold mb-2">目錄</h3>
+        <ul id="toc-list" class="max-h-60 overflow-y-auto"></ul>
+    </div>
+
+    <div id="bookmarks-panel" class="panel" style="display: none;">
+        <h3 class="text-xl font-semibold mb-2">我的書籤</h3>
+        <ul id="bookmarks-list" class="max-h-60 overflow-y-auto"></ul>
+        <p id="no-bookmarks-message" class="text-gray-500 body:night-mode:text-gray-400 mt-2" style="display:none;">尚未新增任何書籤。</p>
+    </div>
+
+    <div id="customization-panel-container" class="panel">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-xl font-semibold">閱讀器設定</h3>
+            <button id="toggle-customization-panel" class="control-button panel-toggle-button p-2 bg-transparent hover:bg-gray-200 body:night-mode:hover:bg-gray-700 text-gray-600 body:night-mode:text-gray-300" aria-label="收合/展開設定面板" aria-expanded="true">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+            </button>
+        </div>
+        <div id="customization-panel-content">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                <div>
+                    <label for="font-select" class="block text-sm font-medium mb-1">字體：</label>
+                    <select id="font-select" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 body:night-mode:bg-gray-700 body:night-mode:border-gray-600">
+                        <option value="Inter, sans-serif">Inter (預設)</option>
+                        <option value="Arial, sans-serif">Arial</option>
+                        <option value="Georgia, serif">Georgia</option>
+                        <option value="'Times New Roman', Times, serif">Times New Roman</option>
+                        <option value="Verdana, sans-serif">Verdana</option>
+                        <option value="'Noto Sans TC', sans-serif">Noto Sans TC (思源黑體)</option>
+                        <option value="'Noto Serif TC', serif">Noto Serif TC (思源宋體)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="font-size-input" class="block text-sm font-medium mb-1">字體大小 (px)：</label>
+                    <input type="number" id="font-size-input" value="16" min="8" max="72" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 body:night-mode:bg-gray-700 body:night-mode:border-gray-600">
+                </div>
+                <div>
+                    <label for="line-height-input" class="block text-sm font-medium mb-1">行距 (倍)：</label>
+                    <input type="number" id="line-height-input" value="1.6" min="1" max="3" step="0.1" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 body:night-mode:bg-gray-700 body:night-mode:border-gray-600">
+                </div>
+                 <div>
+                    <label for="margin-input" class="block text-sm font-medium mb-1">邊距 (px)：</label>
+                    <input type="number" id="margin-input" value="30" min="0" max="100" step="5" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 body:night-mode:bg-gray-700 body:night-mode:border-gray-600">
+                </div>
+                <div>
+                    <label for="bg-color-picker" class="block text-sm font-medium mb-1">背景顏色：</label>
+                    <input type="color" id="bg-color-picker" value="#FFFFFF" class="mt-1 block w-full h-10 p-1 border border-gray-300 rounded-md shadow-sm body:night-mode:bg-gray-700 body:night-mode:border-gray-600">
+                </div>
+                <div>
+                    <label for="text-color-picker" class="block text-sm font-medium mb-1">文字顏色：</label>
+                    <input type="color" id="text-color-picker" value="#000000" class="mt-1 block w-full h-10 p-1 border border-gray-300 rounded-md shadow-sm body:night-mode:bg-gray-700 body:night-mode:border-gray-600">
+                </div>
+            </div>
+            <div class="mt-6 flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                <button id="toggle-night-mode" class="control-button w-full sm:w-auto">切換夜間模式</button>
+                <button id="reset-settings" class="control-button bg-gray-500 hover:bg-gray-600 w-full sm:w-auto">重設設定</button>
+            </div>
+        </div>
+    </div>
+</div>
+    <div id="message-box"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // DOM 元素
+            const readerUiContainer = document.getElementById('reader-ui-container');
+            const epubFileElement = document.getElementById('epub-file');
+            const fileSelectorWrapper = document.getElementById('file-selector-wrapper');
+            const viewerElement = document.getElementById('viewer');
+            const prevButton = document.getElementById('prev');
+            const nextButton = document.getElementById('next');
+            const loaderElement = document.getElementById('loader');
+            const messageBox = document.getElementById('message-box');
+            const tocContainer = document.getElementById('toc-container');
+            const tocList = document.getElementById('toc-list');
+            const progressText = document.getElementById('progress-text');
+
+            const customizationPanelContainer = document.getElementById('customization-panel-container');
+            const customizationPanelContent = document.getElementById('customization-panel-content');
+            const toggleCustomizationPanelButton = document.getElementById('toggle-customization-panel');
+            const fontSelect = document.getElementById('font-select');
+            const fontSizeInput = document.getElementById('font-size-input');
+            const lineHeightInput = document.getElementById('line-height-input');
+            const marginInput = document.getElementById('margin-input');
+            const bgColorPicker = document.getElementById('bg-color-picker');
+            const textColorPicker = document.getElementById('text-color-picker');
+            const nightModeButton = document.getElementById('toggle-night-mode');
+            const resetSettingsButton = document.getElementById('reset-settings');
+
+            const addBookmarkButton = document.getElementById('add-bookmark');
+            const bookmarksPanel = document.getElementById('bookmarks-panel');
+            const bookmarksList = document.getElementById('bookmarks-list');
+            const noBookmarksMessage = document.getElementById('no-bookmarks-message');
+
+            // 全螢幕相關元素已移除
+
+            let book = null;
+            let rendition = null;
+            let isBookLoaded = false;
+            let currentCfi = ''; // 用於書籤和進度
+
+            const SETTINGS_KEY = 'epubReaderSettings_v3'; // 更新設定鍵值以避免衝突
+            const BOOKMARKS_KEY = 'epubReaderBookmarks_v1'; // 書籤鍵值保持不變或按需更新
+            const NIGHT_MODE_CLASS = 'night-mode';
+
+            const defaultSettings = {
+                fontFamily: 'Inter, sans-serif', fontSize: '16', lineHeight: '1.6', margin: '30',
+                bgColor: '#FFFFFF', textColor: '#000000', isNightMode: false,
+                isSettingsPanelCollapsed: false
+            };
+
+            // --- 核心功能 ---
+            function showMessage(message, isError = false, duration = 3000) {
+                messageBox.textContent = message;
+                messageBox.style.backgroundColor = isError ? 'var(--danger-color)' : '#22c55e'; // 使用 CSS 變數
+                messageBox.style.display = 'block';
+                // 清除之前的計時器（如果有）
+                if (messageBox.timer) clearTimeout(messageBox.timer);
+                messageBox.timer = setTimeout(() => {
+                    messageBox.style.display = 'none';
+                }, duration);
+            }
+
+            function loadEpub(file) {
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    loaderElement.style.display = 'flex';
+                    epubFileElement.disabled = true; // 載入時禁用檔案選擇
+                    viewerElement.innerHTML = '';
+                    tocList.innerHTML = '';
+                    tocContainer.style.display = 'none';
+                    bookmarksList.innerHTML = '';
+                    bookmarksPanel.style.display = 'none';
+                    progressText.textContent = '正在載入書籍結構...';
+                    isBookLoaded = false;
+                    fileSelectorWrapper.classList.remove('book-loaded');
+
+                    if (book) { book.destroy(); book = null; }
+                    if (rendition) { rendition.destroy(); rendition = null; }
+
+                    try {
+                        book = ePub(e.target.result);
+                    } catch (error) {
+                        console.error("EPUB 初始化失敗:", error);
+                        showMessage("無法解析 EPUB 檔案，格式可能不正確或已損毀。", true, 5000);
+                        loaderElement.style.display = 'none';
+                        epubFileElement.disabled = false;
+                        progressText.textContent = 'EPUB 檔案載入失敗';
+                        return;
+                    }
+
+                    rendition = book.renderTo(viewerElement, {
+                        width: "100%", height: "100%", flow: "paginated",
+                        spread: "auto", allowScriptedContent: true
+                    });
+
+                    progressText.textContent = '準備書籍內容...';
+
+                    book.ready.then(async () => {
+                        console.log("EPUB 元數據已準備 (book.ready)");
+                        generateTableOfContents(book.navigation.toc);
+                        progressText.textContent = '計算頁面與位置...';
+
+                        try {
+                            await book.locations.generate(1650); // 參數影響百分比計算的精度
+                            console.log("書籍位置已生成。總位置數:", book.locations.total);
+                        } catch (err) {
+                            console.error("生成書籍位置時發生錯誤:", err);
+                            showMessage("計算書籍位置時發生問題，進度顯示可能不準確。", false, 4000);
+                        }
+
+                        const lastLocationCfi = getLastLocation();
+                        progressText.textContent = '呈現書籍內容...';
+                        rendition.display(lastLocationCfi || undefined).then(() => {
+                            isBookLoaded = true;
+                            console.log("書籍內容首次呈現 (rendition.display.then)");
+                            fileSelectorWrapper.classList.add('book-loaded');
+                            applyCustomStyles();
+                            loadBookmarks();
+
+                            if (rendition.currentLocation()) {
+                                currentCfi = rendition.currentLocation().start.cfi; // 確保初始 currentCfi
+                                updateProgress(rendition.currentLocation());
+                                highlightCurrentTocItem(rendition.currentLocation().start.href);
+                            }
+                            updateNavButtons();
+                        }).catch(displayErr => {
+                            console.error("Rendition display error:", displayErr);
+                            showMessage("顯示書籍內容時發生錯誤。", true, 5000);
+                            isBookLoaded = false;
+                        });
+
+                        rendition.on('relocated', location => {
+                            currentCfi = location.start.cfi;
+                            updateNavButtons();
+                            updateProgress(location);
+                            highlightCurrentTocItem(location.start.href);
+                            saveLastLocation(location.start.cfi);
+                        });
+
+                    }).catch(bookReadyErr => {
+                        console.error("載入書籍元數據錯誤 (book.ready.catch): ", bookReadyErr);
+                        showMessage("載入書籍元數據失敗，檔案可能已損毀。", true, 5000);
+                        isBookLoaded = false;
+                    }).finally(() => {
+                        loaderElement.style.display = 'none';
+                        epubFileElement.disabled = false; // 載入完成或失敗後啟用檔案選擇
+                        if (!isBookLoaded) {
+                           updateNavButtons();
+                           progressText.textContent = '書籍載入失敗';
+                        }
+                    });
+                };
+                reader.onerror = e => {
+                    console.error("檔案讀取錯誤: ", e);
+                    showMessage("讀取檔案時發生錯誤。", true, 5000);
+                    loaderElement.style.display = 'none';
+                    epubFileElement.disabled = false;
+                    isBookLoaded = false;
+                    updateNavButtons();
+                    progressText.textContent = '檔案讀取失敗';
+                };
+                reader.readAsArrayBuffer(file);
+            }
+
+            // --- 設定持久化 ---
+            function loadSettings() {
+                const saved = localStorage.getItem(SETTINGS_KEY);
+                let settings = { ...defaultSettings };
+                if (saved) {
+                    try { settings = { ...settings, ...JSON.parse(saved) }; }
+                    catch (e) { console.error("無法解析設定:", e); localStorage.removeItem(SETTINGS_KEY); }
+                }
+                fontSelect.value = settings.fontFamily;
+                fontSizeInput.value = settings.fontSize;
+                lineHeightInput.value = settings.lineHeight;
+                marginInput.value = settings.margin;
+                bgColorPicker.value = settings.bgColor;
+                textColorPicker.value = settings.textColor;
+
+                document.body.classList.toggle(NIGHT_MODE_CLASS, settings.isNightMode);
+                nightModeButton.textContent = settings.isNightMode ? "切換日間模式" : "切換夜間模式";
+                toggleCustomizationPanel(settings.isSettingsPanelCollapsed, true); // true for silent update
+
+                if (isBookLoaded && rendition) applyCustomStyles();
+            }
+
+            function saveSettings() {
+                const settings = {
+                    fontFamily: fontSelect.value, fontSize: fontSizeInput.value,
+                    lineHeight: lineHeightInput.value, margin: marginInput.value,
+                    bgColor: bgColorPicker.value, textColor: textColorPicker.value,
+                    isNightMode: document.body.classList.contains(NIGHT_MODE_CLASS),
+                    isSettingsPanelCollapsed: customizationPanelContent.classList.contains('collapsed')
+                };
+                localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+            }
+
+            function applyCustomStyles() {
+                if (!rendition || !rendition.themes) return;
+                const themeName = 'customReaderThemeOptimized'; // 新的主題名稱
+                const currentBgColor = bgColorPicker.value;
+                const currentTextColor = textColorPicker.value;
+                const currentFontFamily = fontSelect.value;
+                const currentFontSize = fontSizeInput.value + 'px';
+                const currentLineHeight = lineHeightInput.value;
+                const currentMargin = marginInput.value + 'px';
+
+                let linkColor = 'var(--accent-color)';
+                if (document.body.classList.contains(NIGHT_MODE_CLASS)) {
+                    linkColor = '#90cdf4'; // 夜間模式下的連結顏色
+                }
+
+                rendition.themes.register(themeName, {
+                    'body': {
+                        'background-color': `${currentBgColor} !important`,
+                        'color': `${currentTextColor} !important`,
+                        'font-family': `${currentFontFamily} !important`,
+                        'font-size': `${currentFontSize} !important`,
+                        'line-height': `${currentLineHeight} !important`,
+                        'padding': `20px ${currentMargin} !important`
+                    },
+                    'p, li, div, span, td, th': { 'color': `${currentTextColor} !important` },
+                    'a': { 'color': `${linkColor} !important`, 'text-decoration': 'underline !important' },
+                    'img, svg, video': { 'max-width': '100% !important', 'height': 'auto !important', 'object-fit': 'contain' }
+                });
+                rendition.themes.select(themeName);
+                saveSettings();
+            }
+
+            // --- 最後閱讀位置 ---
+            function saveLastLocation(cfi) {
+                if (book && book.key() && cfi) {
+                    localStorage.setItem(`lastLocation_${book.key()}`, cfi);
+                }
+            }
+
+            function getLastLocation() {
+                if (book && book.key()) {
+                    return localStorage.getItem(`lastLocation_${book.key()}`);
+                }
+                return null;
+            }
+
+            // --- 書籤功能 ---
+            function getBookIdentifier() {
+                if (book && book.packaging && book.packaging.metadata && book.packaging.metadata.identifier) {
+                    return book.packaging.metadata.identifier;
+                }
+                if (epubFileElement.files[0] && epubFileElement.files[0].name) {
+                    return epubFileElement.files[0].name; // 使用檔案名稱作為備用標識
+                }
+                return book ? book.key() : 'unknown_book'; // epub.js 內部的 key
+            }
+
+            function loadBookmarks() {
+                bookmarksList.innerHTML = ''; // 清空現有列表
+                const bookId = getBookIdentifier();
+                const allBookmarks = JSON.parse(localStorage.getItem(BOOKMARKS_KEY) || '{}');
+                const bookSpecificBookmarks = allBookmarks[bookId] || [];
+
+                noBookmarksMessage.style.display = bookSpecificBookmarks.length === 0 ? 'block' : 'none';
+
+                bookSpecificBookmarks.forEach((bm, index) => {
+                    const listItem = document.createElement('li');
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = bm.name || `書籤 ${index + 1}`;
+                    textSpan.className = 'bookmark-text flex-grow mr-2 truncate';
+                    textSpan.title = bm.name || `跳轉到 ${bm.cfi ? bm.cfi.substring(0,30) : '未知位置'}...`;
+                    textSpan.setAttribute('role', 'button'); // 增加可訪問性
+                    textSpan.setAttribute('tabindex', '0');   // 使其可被鍵盤聚焦
+                    textSpan.addEventListener('click', () => {
+                        if (rendition && bm.cfi) rendition.display(bm.cfi);
+                    });
+                    textSpan.addEventListener('keydown', (e) => { // 允許 Enter 鍵觸發
+                        if (e.key === 'Enter' && rendition && bm.cfi) rendition.display(bm.cfi);
+                    });
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.56 0c.342.052.682.107 1.022.166m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>`;
+                    deleteBtn.className = 'control-button bookmark-delete-button p-1.5 text-xs'; // 使用特定 class
+                    deleteBtn.setAttribute('aria-label', `刪除書籤 ${bm.name || index + 1}`);
+                    deleteBtn.addEventListener('click', () => deleteBookmark(index));
+
+                    listItem.appendChild(textSpan);
+                    listItem.appendChild(deleteBtn);
+                    bookmarksList.appendChild(listItem);
+                });
+                bookmarksPanel.style.display = 'block'; // 確保面板顯示
+            }
+
+            async function addBookmark() {
+                if (!isBookLoaded || !currentCfi || !rendition) {
+                    showMessage("書籍未載入或目前位置未知，無法新增書籤。", true);
+                    return;
+                }
+                const bookId = getBookIdentifier();
+                let allBookmarks = JSON.parse(localStorage.getItem(BOOKMARKS_KEY) || '{}');
+                if (!allBookmarks[bookId]) allBookmarks[bookId] = [];
+
+                let bookmarkName = `位置: ${currentCfi.substring(8, 30)}...`; // 預設名稱
+                try {
+                    const section = await book.navigation.get(currentCfi);
+                    if (section && section.label) {
+                        bookmarkName = section.label.trim();
+                    } else {
+                        const range = await rendition.getRange(currentCfi);
+                        if (range) {
+                           const textContent = range.toString().trim().substring(0, 30); // 取前30個字元
+                           if (textContent) bookmarkName = textContent + "...";
+                        }
+                    }
+                } catch (err) { console.warn("獲取書籤名稱時出錯:", err); }
+
+                const existingBookmark = allBookmarks[bookId].find(bm => bm.cfi === currentCfi);
+                if (existingBookmark) {
+                    showMessage("此位置已存在書籤。", false); // false 表示非錯誤訊息
+                    return;
+                }
+
+                allBookmarks[bookId].push({ cfi: currentCfi, name: bookmarkName, added: new Date().toISOString() });
+                localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(allBookmarks));
+                loadBookmarks(); // 重新載入書籤列表以顯示新增的書籤
+                showMessage("書籤已新增！");
+            }
+
+            function deleteBookmark(index) {
+                const bookId = getBookIdentifier();
+                let allBookmarks = JSON.parse(localStorage.getItem(BOOKMARKS_KEY) || '{}');
+                if (allBookmarks[bookId] && allBookmarks[bookId][index]) {
+                    allBookmarks[bookId].splice(index, 1); // 從陣列中移除
+                    localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(allBookmarks));
+                    loadBookmarks(); // 重新載入書籤列表
+                    showMessage("書籤已刪除。");
+                }
+            }
+
+            // 全螢幕相關函數已移除
+
+            // --- UI 控制 ---
+            function updateNavButtons() {
+                const disabled = !isBookLoaded || !rendition || !rendition.location;
+                prevButton.disabled = disabled || (rendition.location.start.index === 0 && rendition.location.start.cfi.isStart);
+                nextButton.disabled = disabled || rendition.location.atEnd;
+                addBookmarkButton.disabled = disabled; // 如果書籍未載入，則禁用新增書籤
+            }
+
+            function updateProgress(location) {
+                if (!book || !location || !isBookLoaded) {
+                    progressText.textContent = '未載入書籍'; return;
+                }
+                // currentCfi 已在 relocated 事件中更新
+
+                if (book.locations && book.locations.total > 0) {
+                    const percentage = book.locations.percentageFromCfi(location.start.cfi);
+                    if (percentage !== null && !isNaN(percentage) && percentage >= 0 && percentage <= 1) {
+                         progressText.textContent = `進度：${(percentage * 100).toFixed(1)}%`; return;
+                    }
+                }
+                // 若無法計算百分比，嘗試顯示章節標題
+                const currentNavItem = book.navigation.get(location.start.href);
+                if (currentNavItem && currentNavItem.label) {
+                    progressText.textContent = `目前：${currentNavItem.label.trim()}`;
+                } else {
+                    progressText.textContent = '進度計算中...'; // 或 '位置未知'
+                }
+            }
+            function generateTableOfContents(tocItems) {
+                 if (!tocItems || tocItems.length === 0) {
+                    tocContainer.style.display = 'none'; return;
+                }
+                tocList.innerHTML = '';
+                const createTocItem = (item, parentList, level = 0) => {
+                    const listItem = document.createElement('li');
+                    const link = document.createElement('a');
+                    link.href = item.href;
+                    link.textContent = item.label.trim();
+                    link.dataset.href = item.href; // 用於高亮比對
+                    link.className = "block px-3 py-1.5 rounded-md hover:bg-gray-100 body:night-mode:hover:bg-gray-600 transition-colors duration-150";
+                    link.style.paddingLeft = `${0.75 + level * 0.75}rem`; // 根據層級縮排
+                    link.setAttribute('role', 'menuitem');
+                    link.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        if (rendition) rendition.display(item.href);
+                    });
+                    listItem.appendChild(link);
+                    parentList.appendChild(listItem);
+                    if (item.subitems && item.subitems.length > 0) {
+                        // 對於有子項目的父項目，可以考慮不直接作為連結，或有不同行為
+                        item.subitems.forEach(subItem => createTocItem(subItem, parentList, level + 1));
+                    }
+                };
+                tocItems.forEach(item => createTocItem(item, tocList));
+                tocContainer.style.display = 'block';
+            }
+            function highlightCurrentTocItem(currentHrefInput) {
+                if (!currentHrefInput) return;
+                const currentHrefBase = currentHrefInput.split('#')[0]; // 忽略片段標識符
+                tocList.querySelectorAll('a').forEach(link => {
+                    const linkHrefBase = link.dataset.href.split('#')[0];
+                    link.classList.toggle('active', linkHrefBase === currentHrefBase);
+                });
+            }
+
+            function toggleCustomizationPanel(forceCollapse, silent = false) {
+                const isCollapsing = typeof forceCollapse === 'boolean' ? forceCollapse : !customizationPanelContent.classList.contains('collapsed');
+                customizationPanelContent.classList.toggle('collapsed', isCollapsing);
+                toggleCustomizationPanelButton.classList.toggle('collapsed', isCollapsing);
+                toggleCustomizationPanelButton.setAttribute('aria-expanded', String(!isCollapsing));
+                if (!silent) saveSettings(); // 只有在使用者操作時才儲存狀態
+            }
+
+            // --- 事件監聽器 ---
+            epubFileElement.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    loadEpub(e.target.files[0]);
+                }
+            });
+            prevButton.addEventListener('click', () => rendition && isBookLoaded && rendition.prev());
+            nextButton.addEventListener('click', () => rendition && isBookLoaded && rendition.next());
+            addBookmarkButton.addEventListener('click', addBookmark);
+            // 全螢幕按鈕的事件監聽器已移除
+            toggleCustomizationPanelButton.addEventListener('click', () => toggleCustomizationPanel());
+
+            document.addEventListener('keydown', function(event) {
+                if (!isBookLoaded || !rendition) return;
+                // 如果焦點在輸入相關的元素上，則不進行翻頁
+                if (['INPUT', 'SELECT', 'TEXTAREA'].includes(event.target.tagName) || event.target.isContentEditable) return;
+
+                let handled = false;
+                if (event.key === 'ArrowLeft') { rendition.prev(); handled = true; }
+                else if (event.key === 'ArrowRight') { rendition.next(); handled = true; }
+                else if (event.key === ' ' && !event.shiftKey) { rendition.next(); handled = true; } // Space 翻下一頁
+                else if (event.key === ' ' && event.shiftKey) { rendition.prev(); handled = true; } // Shift + Space 翻上一頁
+
+                if (handled) event.preventDefault(); // 防止預設行為 (如頁面滾動)
+            });
+
+            [fontSelect, fontSizeInput, lineHeightInput, marginInput, bgColorPicker, textColorPicker].forEach(el => {
+                const eventType = ['color', 'range'].includes(el.type) || el.tagName === 'SELECT' ? 'change' : 'input';
+                el.addEventListener(eventType, () => {
+                    if (isBookLoaded && rendition) applyCustomStyles(); else saveSettings();
+                });
+            });
+
+            nightModeButton.addEventListener('click', function() {
+                document.body.classList.toggle(NIGHT_MODE_CLASS);
+                const isNight = document.body.classList.contains(NIGHT_MODE_CLASS);
+                nightModeButton.textContent = isNight ? "切換日間模式" : "切換夜間模式";
+
+                // 自動更新顏色選擇器以匹配模式
+                const currentSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || JSON.stringify(defaultSettings));
+                if (isNight) {
+                    // 如果目前顏色是日間預設，或與儲存的日間設定相同，則切換到夜間預設
+                    if (bgColorPicker.value === defaultSettings.bgColor || bgColorPicker.value === currentSettings.bgColor && !currentSettings.isNightMode) bgColorPicker.value = '#2d3748';
+                    if (textColorPicker.value === defaultSettings.textColor || textColorPicker.value === currentSettings.textColor && !currentSettings.isNightMode) textColorPicker.value = '#e2e8f0';
+                } else {
+                    // 如果目前顏色是夜間常用色，或與儲存的夜間設定相同，則切換回日間預設
+                    if (bgColorPicker.value === '#2d3748' || (currentSettings.isNightMode && bgColorPicker.value === currentSettings.bgColor) ) bgColorPicker.value = defaultSettings.bgColor;
+                    if (textColorPicker.value === '#e2e8f0' || (currentSettings.isNightMode && textColorPicker.value === currentSettings.textColor) ) textColorPicker.value = defaultSettings.textColor;
+                }
+                if (isBookLoaded && rendition) applyCustomStyles(); else saveSettings();
+            });
+
+            resetSettingsButton.addEventListener('click', function() {
+                if (confirm("確定要重設所有閱讀器設定嗎？（書籤不會被刪除）")) {
+                    localStorage.removeItem(SETTINGS_KEY); // 移除設定
+                    loadSettings(); // 載入並應用預設設定
+                    if (isBookLoaded && rendition) {
+                        applyCustomStyles(); // 如果書籍已載入，立即應用樣式
+                    }
+                    showMessage("設定已重設為預設值。");
+                }
+            });
+
+            // --- 初始化 ---
+            loadSettings(); // 載入儲存的設定或預設設定
+            updateNavButtons(); // 根據初始狀態設定按鈕
+            progressText.textContent = '請選擇 EPUB 檔案開始閱讀';
+            addBookmarkButton.disabled = true; // 初始禁用新增書籤按鈕
+            noBookmarksMessage.style.display = 'block'; // 初始顯示無書籤提示
+            bookmarksPanel.style.display = 'block'; // 讓書籤面板框架可見，即使是空的
+
+            // 視窗大小調整時，重新計算 rendition 尺寸
+            window.addEventListener('resize', () => {
+                if (rendition && isBookLoaded) { // 確保 rendition 和書籍已載入
+                    setTimeout(() => { // 使用 setTimeout 確保 DOM 更新完成
+                         if (rendition) rendition.resize(); // 再次檢查 rendition 是否存在
+                    }, 100);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
