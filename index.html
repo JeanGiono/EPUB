@@ -3,73 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SHIFT TOOL v7.1 (完整版)</title>
+    <title>SHIFT TOOL v8.0 (Final Refactor)</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" integrity="sha512-KfkfwYDsLkIlwQp6LFnl8zNdLGxu9YAA1QvwINks4PhcElQSvqcyVLLD9aMhXd13uQjoXtEKNosOWaZqXgel0g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 <body>
-    <!-- App Layout -->
     <div class="app-container">
-        <!-- Header -->
         <header class="header">
-            <h1 class="app-title">SHIFT TOOL v7.1</h1>
+            <h1 class="app-title">SHIFT TOOL v8.0</h1>
             <div class="header-controls">
                 <button class="btn btn--secondary theme-toggle" id="settingsBtn" aria-label="開啟設定"><i class="fas fa-cog"></i></button>
                 <button class="btn btn--secondary theme-toggle" id="themeToggle" aria-label="切換主題">🌙</button>
             </div>
         </header>
 
-        <!-- Navigation -->
         <nav class="nav-bar">
             <div class="nav-controls">
-                <button class="btn btn--outline nav-btn" id="prevMonthBtn">&lt;</button>
-                <h2 class="current-date" id="monthYearDisplay"></h2>
-                <button class="btn btn--outline nav-btn" id="nextMonthBtn">&gt;</button>
+                <button class="btn btn--outline nav-btn" id="prevMonthBtn" aria-label="上個月">&lt;</button>
+                <h2 class="current-date" id="monthYearDisplay" aria-live="polite"></h2>
+                <button class="btn btn--outline nav-btn" id="nextMonthBtn" aria-label="下個月">&gt;</button>
             </div>
             <div class="view-controls">
-                <button class="btn btn--secondary view-btn active" id="primaryScheduleTab" data-view="primary">主要班表</button>
-                <button class="btn btn--secondary view-btn" id="secondaryScheduleTab" data-view="secondary">第二班表 (週末)</button>
+                <button class="btn btn--secondary view-btn active" id="primaryScheduleTab" data-view="primary" role="tab" aria-selected="true">主要班表</button>
+                <button class="btn btn--secondary view-btn" id="secondaryScheduleTab" data-view="secondary" role="tab" aria-selected="false">第二班表 (週末)</button>
             </div>
         </nav>
         
-        <!-- Sidebar for Controls -->
         <aside class="sidebar">
-            <div class="sidebar-section">
-                <h3>主要班表人員</h3>
+            <section class="sidebar-section" aria-labelledby="staff-heading">
+                <h3 id="staff-heading">主要班表人員</h3>
                 <div id="staffList" class="staff-list"></div>
-                <form id="addStaffForm">
-                    <input type="text" id="staffNameInput" class="form-control mt-8" placeholder="輸入姓名後按 Enter">
+                <form id="addStaffForm" class="mt-16">
+                    <input type="text" id="staffNameInput" class="form-control" placeholder="輸入姓名後按 Enter">
                     <button type="submit" class="btn btn--primary btn--full-width mt-8">新增人員</button>
                 </form>
-            </div>
+            </section>
             
-            <div id="primaryViewControls" class="sidebar-section">
-                <h3>篩選與匯出</h3>
+            <section id="primaryViewControls" class="sidebar-section" aria-labelledby="filter-heading">
+                <h3 id="filter-heading">篩選與匯出</h3>
+                <label for="staffFilterSelect" class="sr-only">篩選人員</label>
                 <select id="staffFilterSelect" class="form-control"></select>
                 <button class="btn btn--outline btn--full-width mt-8" id="exportPrimaryScheduleBtn">匯出主要班表 (.ics)</button>
-            </div>
+            </section>
 
-            <div id="secondaryViewControls" class="sidebar-section hidden">
-                <h3>組別資訊</h3>
+            <section id="secondaryViewControls" class="sidebar-section hidden" aria-labelledby="group-heading">
+                <h3 id="group-heading">組別資訊</h3>
                 <div id="secondaryStaffInfo" class="secondary-staff-info"></div>
                 <button class="btn btn--outline btn--full-width mt-8" id="exportSecondaryScheduleBtn">匯出第二班表 (.ics)</button>
-            </div>
+            </section>
 
-            <div class="sidebar-section">
-                <h3>自動化功能</h3>
+            <section class="sidebar-section" aria-labelledby="automation-heading">
+                <h3 id="automation-heading">自動化功能</h3>
                 <button class="btn btn--outline btn--full-width mt-8" id="autoScheduleBtn">自動產生初步班表</button>
                 <button class="btn btn--outline btn--full-width mt-8" id="carryOverBtn">自動預排次月班表</button>
-            </div>
+            </section>
             
-            <div class="sidebar-section">
-                <h3>資料管理</h3>
+            <section class="sidebar-section" aria-labelledby="data-heading">
+                <h3 id="data-heading">資料管理</h3>
                 <button class="btn btn--primary btn--full-width mt-8" id="saveAllBtn">儲存所有變更</button>
-                <button class="btn btn--secondary btn--full-width mt-8" id="printBtn">友善列印本月班表</button>
+                <button class="btn btn--secondary btn--full-width mt-8" id="printBtn"><i class="fas fa-print mr-8"></i>友善列印本月班表</button>
                 <button class="btn btn--danger btn--full-width mt-8" id="clearMonthBtn">清除本月主要班表</button>
-            </div>
+            </section>
         </aside>
 
-        <!-- Main Content: Calendar -->
         <main class="main-content">
             <div class="calendar-container">
                 <div class="calendar-header">
@@ -77,17 +73,16 @@
                     <div class="weekday">三</div><div class="weekday">四</div><div class="weekday">五</div>
                     <div class="weekday">六</div>
                 </div>
-                <div class="calendar-grid" id="calendarGrid"></div>
+                <div class="calendar-grid" id="calendarGrid" role="grid" aria-labelledby="monthYearDisplay"></div>
             </div>
         </main>
     </div>
 
-    <!-- Modals -->
-    <div class="modal" id="assignmentModal">
+    <div class="modal" id="assignmentModal" role="dialog" aria-modal="true" aria-labelledby="assignmentModalTitle">
         <div class="modal-content">
             <div class="modal-header">
                 <h3 id="assignmentModalTitle">指派主要班表</h3>
-                <button class="close-btn" data-modal-close>&times;</button>
+                <button class="close-btn" data-modal-close aria-label="關閉">&times;</button>
             </div>
             <div class="modal-body">
                 <p id="noStaffMessage" class="hidden">請先在側邊欄新增人員。</p>
@@ -99,15 +94,15 @@
         </div>
     </div>
     
-    <div class="modal" id="settingsModal">
+    <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
         <div class="modal-content wide">
             <div class="modal-header">
-                <h3><i class="fas fa-cog"></i> 進階設定</h3>
-                <button class="close-btn" data-modal-close>&times;</button>
+                <h3 id="settingsModalTitle"><i class="fas fa-cog"></i> 進階設定</h3>
+                <button class="close-btn" data-modal-close aria-label="關閉">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="modal-section">
-                    <h4>資料匯入</h4>
+                <section class="modal-section" aria-labelledby="import-heading">
+                    <h4 id="import-heading">資料匯入</h4>
                     <div class="form-group">
                         <label for="fullSchedulePasteArea">貼上主要班表文字</label>
                         <textarea id="fullSchedulePasteArea" rows="4" class="form-control" placeholder="可貼上包含 'XXX年Y月' 及 '姓名' 與日期標頭的純文字班表。"></textarea>
@@ -118,9 +113,9 @@
                         <input type="file" id="holidayFileImport" accept=".ics" class="form-control">
                         <button id="importHolidaysBtn" class="btn btn--primary btn--full-width mt-8">匯入假期檔案</button>
                     </div>
-                </div>
-                <div class="modal-section">
-                    <h4>查哨班表設定</h4>
+                </section>
+                <section class="modal-section" aria-labelledby="sentry-heading">
+                    <h4 id="sentry-heading">查哨班表設定</h4>
                     <p class="form-hint">此班表依「隔日休、週期重置」規則自動產生。</p>
                     <form id="sentryScheduleForm" class="form-grid">
                         <div class="form-group">
@@ -133,16 +128,16 @@
                         </div>
                         <button type="submit" class="btn btn--primary">更新查哨起始條件</button>
                     </form>
-                </div>
+                </section>
             </div>
         </div>
     </div>
 
-    <div class="modal" id="autoScheduleModal">
+    <div class="modal" id="autoScheduleModal" role="dialog" aria-modal="true" aria-labelledby="autoScheduleModalTitle">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>自動排定主要班表</h3>
-                <button class="close-btn" data-modal-close>&times;</button>
+                <h3 id="autoScheduleModalTitle">自動排定主要班表</h3>
+                <button class="close-btn" data-modal-close aria-label="關閉">&times;</button>
             </div>
             <form id="autoScheduleForm">
                 <div class="modal-body">
@@ -168,23 +163,23 @@
         </div>
     </div>
 
-    <div class="modal" id="confirmModal">
+    <div class="modal" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
         <div class="modal-content">
              <div class="modal-header">
                 <h3 id="confirmModalTitle"></h3>
-                <button class="close-btn" data-modal-close>&times;</button>
+                <button class="close-btn" data-modal-close aria-label="關閉">&times;</button>
             </div>
             <div class="modal-body">
                 <p id="confirmModalMessage"></p>
             </div>
             <div class="modal-footer">
-                <button class="btn btn--secondary" id="cancelConfirmBtn">取消</button>
-                <button class="btn btn--primary" id="acceptConfirmBtn">確認</button>
+                <button type="button" class="btn btn--secondary" id="cancelConfirmBtn">取消</button>
+                <button type="button" class="btn btn--primary" id="acceptConfirmBtn">確認</button>
             </div>
         </div>
     </div>
     
-    <div id="customAlert" class="custom-alert"></div>
+    <div id="customAlert" class="custom-alert" role="alert" aria-live="assertive"></div>
 
     <script src="app.js"></script>
 </body>
