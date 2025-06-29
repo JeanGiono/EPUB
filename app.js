@@ -1,9 +1,9 @@
-// SHIFT TOOL v6.3 (優化版) - Main Application JavaScript
-// 全面優化的排班管理工具
+// 排班管理工具 - 優化版
+// 完全優化的排班管理系統，支援三輪序邏輯
 
-// Utility Functions
+// 工具函數類
 class Utils {
-    // Debounce function for performance optimization
+    // 防抖函數，用於性能優化
     static debounce(func, wait, immediate) {
         let timeout;
         return function executedFunction(...args) {
@@ -18,7 +18,7 @@ class Utils {
         };
     }
 
-    // Throttle function for performance optimization
+    // 節流函數，用於性能優化
     static throttle(func, limit) {
         let inThrottle;
         return function(...args) {
@@ -30,7 +30,7 @@ class Utils {
         }
     }
 
-    // Generate random color
+    // 生成隨機顏色
     static generateRandomColor() {
         const colors = [
             '#1FB8CD', '#FFC185', '#B4413C', '#ECEBD5', '#5D878F',
@@ -39,7 +39,7 @@ class Utils {
         return colors[Math.floor(Math.random() * colors.length)];
     }
 
-    // Format date
+    // 格式化日期
     static formatDate(date, format = 'YYYY-MM-DD') {
         const d = new Date(date);
         const year = d.getFullYear();
@@ -58,31 +58,25 @@ class Utils {
         }
     }
 
-    // Check if date is holiday
-    static isHoliday(date, holidays = []) {
-        const dateStr = this.formatDate(date);
-        return holidays.includes(dateStr);
-    }
-
-    // Get Chinese weekday
+    // 獲取中文星期
     static getChineseWeekday(dayIndex) {
         const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
         return weekdays[dayIndex];
     }
 
-    // Generate unique ID
+    // 生成唯一ID
     static generateId() {
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
     }
 
-    // Batch DOM operations
+    // 批量DOM操作
     static batchDOMUpdates(callback) {
         requestAnimationFrame(() => {
             callback();
         });
     }
 
-    // Validate form data
+    // 表單驗證
     static validateForm(formData, rules) {
         const errors = {};
         
@@ -108,47 +102,83 @@ class Utils {
     }
 }
 
-// Data Storage Manager
+// 資料存儲管理器（使用內存存儲）
 class DataStorage {
     constructor() {
-        this.storageKey = 'shiftTool_v6_3';
-        this.defaultData = {
-            staff: [],
+        this.data = {
+            staff: [
+                {
+                    id: 'staff1',
+                    name: '張三',
+                    department: '業務部',
+                    color: '#1FB8CD',
+                    mainSchedule: true,
+                    weekendSchedule: true,
+                    createdAt: new Date().toISOString()
+                },
+                {
+                    id: 'staff2',
+                    name: '李四',
+                    department: '技術部',
+                    color: '#FFC185',
+                    mainSchedule: true,
+                    weekendSchedule: false,
+                    createdAt: new Date().toISOString()
+                },
+                {
+                    id: 'staff3',
+                    name: '王五',
+                    department: '客服部',
+                    color: '#B4413C',
+                    mainSchedule: true,
+                    weekendSchedule: true,
+                    createdAt: new Date().toISOString()
+                },
+                {
+                    id: 'staff4',
+                    name: '趙六',
+                    department: '行政部',
+                    color: '#5D878F',
+                    mainSchedule: true,
+                    weekendSchedule: false,
+                    createdAt: new Date().toISOString()
+                },
+                {
+                    id: 'staff5',
+                    name: '錢七',
+                    department: '財務部',
+                    color: '#DB4545',
+                    mainSchedule: true,
+                    weekendSchedule: true,
+                    createdAt: new Date().toISOString()
+                }
+            ],
             schedules: {
                 main: {},
                 weekend: {}
             },
             settings: {
-                workDaysPerWeek: 5,
-                weekendRotation: 'weekly',
-                exportFormat: 'excel',
-                customHolidays: []
+                startingStaff: null,
+                rotationIndexes: {
+                    monThu: 0,
+                    fri: 0,
+                    weekend: 0,
+                    weekendSecondary: 0
+                }
             },
-            version: '6.3'
+            version: '1.0'
         };
     }
 
-    // Load data from localStorage
+    // 載入資料
     loadData() {
-        try {
-            const data = localStorage.getItem(this.storageKey);
-            if (data) {
-                const parsed = JSON.parse(data);
-                // Merge with default data to handle missing properties
-                return { ...this.defaultData, ...parsed };
-            }
-        } catch (error) {
-            console.error('Error loading data:', error);
-            NotificationManager.show('資料載入失敗', 'error');
-        }
-        return this.defaultData;
+        return this.data;
     }
 
-    // Save data to localStorage with error handling
-    saveData(data) {
+    // 保存資料
+    saveData(newData) {
         try {
-            const dataToSave = { ...data, version: '6.3', lastModified: new Date().toISOString() };
-            localStorage.setItem(this.storageKey, JSON.stringify(dataToSave));
+            this.data = { ...this.data, ...newData, lastModified: new Date().toISOString() };
             return true;
         } catch (error) {
             console.error('Error saving data:', error);
@@ -157,99 +187,93 @@ class DataStorage {
         }
     }
 
-    // Get staff by ID
+    // 根據ID獲取人員
     getStaff(staffId) {
-        const data = this.loadData();
-        return data.staff.find(s => s.id === staffId);
+        return this.data.staff.find(s => s.id === staffId);
     }
 
-    // Add or update staff
+    // 新增或更新人員
     saveStaff(staffData) {
-        const data = this.loadData();
-        const existingIndex = data.staff.findIndex(s => s.id === staffData.id);
+        const existingIndex = this.data.staff.findIndex(s => s.id === staffData.id);
         
         if (existingIndex >= 0) {
-            data.staff[existingIndex] = { ...data.staff[existingIndex], ...staffData };
+            this.data.staff[existingIndex] = { ...this.data.staff[existingIndex], ...staffData };
         } else {
             staffData.id = staffData.id || Utils.generateId();
             staffData.createdAt = new Date().toISOString();
-            data.staff.push(staffData);
+            this.data.staff.push(staffData);
         }
         
-        return this.saveData(data);
+        return this.saveData(this.data);
     }
 
-    // Delete staff
+    // 刪除人員
     deleteStaff(staffId) {
-        const data = this.loadData();
-        data.staff = data.staff.filter(s => s.id !== staffId);
+        this.data.staff = this.data.staff.filter(s => s.id !== staffId);
         
-        // Remove from schedules
-        Object.keys(data.schedules.main).forEach(date => {
-            data.schedules.main[date] = data.schedules.main[date].filter(id => id !== staffId);
-            if (data.schedules.main[date].length === 0) {
-                delete data.schedules.main[date];
+        // 從班表中移除
+        Object.keys(this.data.schedules.main).forEach(date => {
+            this.data.schedules.main[date] = this.data.schedules.main[date].filter(id => id !== staffId);
+            if (this.data.schedules.main[date].length === 0) {
+                delete this.data.schedules.main[date];
             }
         });
         
-        Object.keys(data.schedules.weekend).forEach(date => {
-            data.schedules.weekend[date] = data.schedules.weekend[date].filter(id => id !== staffId);
-            if (data.schedules.weekend[date].length === 0) {
-                delete data.schedules.weekend[date];
+        Object.keys(this.data.schedules.weekend).forEach(date => {
+            this.data.schedules.weekend[date] = this.data.schedules.weekend[date].filter(id => id !== staffId);
+            if (this.data.schedules.weekend[date].length === 0) {
+                delete this.data.schedules.weekend[date];
             }
         });
         
-        return this.saveData(data);
+        return this.saveData(this.data);
     }
 
-    // Save schedule
+    // 保存班表
     saveSchedule(date, staffIds, type = 'main') {
-        const data = this.loadData();
         const dateStr = Utils.formatDate(date);
         
         if (staffIds && staffIds.length > 0) {
-            data.schedules[type][dateStr] = staffIds;
+            this.data.schedules[type][dateStr] = Array.isArray(staffIds) ? staffIds : [staffIds];
         } else {
-            delete data.schedules[type][dateStr];
+            delete this.data.schedules[type][dateStr];
         }
         
-        return this.saveData(data);
+        return this.saveData(this.data);
     }
 
-    // Get schedule for date
+    // 獲取指定日期的班表
     getSchedule(date, type = 'main') {
-        const data = this.loadData();
         const dateStr = Utils.formatDate(date);
-        return data.schedules[type][dateStr] || [];
+        return this.data.schedules[type][dateStr] || [];
     }
 
-    // Export data
+    // 匯出資料
     exportData(format = 'json') {
-        const data = this.loadData();
         const timestamp = Utils.formatDate(new Date(), 'YYYY-MM-DD');
         
         switch (format) {
             case 'json':
                 return {
                     filename: `shift_tool_backup_${timestamp}.json`,
-                    content: JSON.stringify(data, null, 2),
+                    content: JSON.stringify(this.data, null, 2),
                     type: 'application/json'
                 };
             case 'csv':
-                return this.exportToCSV(data, timestamp);
+                return this.exportToCSV(timestamp);
             default:
                 return null;
         }
     }
 
-    // Export to CSV format
-    exportToCSV(data, timestamp) {
-        const staff = data.staff;
-        const schedules = data.schedules;
+    // 匯出為CSV格式
+    exportToCSV(timestamp) {
+        const staff = this.data.staff;
+        const schedules = this.data.schedules;
         
         let csvContent = '日期,班表類型,人員姓名,部門\n';
         
-        // Export main schedules
+        // 匯出主要班表
         Object.entries(schedules.main).forEach(([date, staffIds]) => {
             staffIds.forEach(staffId => {
                 const staffMember = staff.find(s => s.id === staffId);
@@ -259,7 +283,7 @@ class DataStorage {
             });
         });
         
-        // Export weekend schedules
+        // 匯出次要班表
         Object.entries(schedules.weekend).forEach(([date, staffIds]) => {
             staffIds.forEach(staffId => {
                 const staffMember = staff.find(s => s.id === staffId);
@@ -277,7 +301,7 @@ class DataStorage {
     }
 }
 
-// UI Elements Manager
+// UI元素管理器
 class UIElements {
     constructor() {
         this.currentDate = new Date();
@@ -285,24 +309,25 @@ class UIElements {
         this.selectedStaff = null;
     }
 
-    // Initialize all UI components
+    // 初始化所有UI組件
     init() {
         this.renderCalendarHeaders();
         this.renderCalendar();
         this.renderStaffList();
         this.updateCurrentMonth();
         this.bindEvents();
+        this.updateSelectedStaffInfo();
     }
 
-    // Render calendar headers
+    // 渲染日曆標題
     renderCalendarHeaders() {
         const calendar = document.getElementById('calendar');
         const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
         
-        // Clear existing content
+        // 清除現有內容
         calendar.innerHTML = '';
         
-        // Add weekday headers
+        // 新增星期標題
         weekdays.forEach(day => {
             const header = document.createElement('div');
             header.className = 'calendar-header';
@@ -312,26 +337,26 @@ class UIElements {
         });
     }
 
-    // Render calendar with optimized DOM operations
+    // 渲染日曆
     renderCalendar() {
         const calendar = document.getElementById('calendar');
         const year = this.currentDate.getFullYear();
         const month = this.currentDate.getMonth();
         
-        // Remove existing day cells
+        // 移除現有的日期格子
         const existingDays = calendar.querySelectorAll('.calendar-day');
         existingDays.forEach(day => day.remove());
         
-        // Create document fragment for batch DOM updates
+        // 創建文檔片段進行批量DOM更新
         const fragment = document.createDocumentFragment();
         
-        // Get first day of month and number of days
+        // 獲取月份的第一天和最後一天
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
         const daysInMonth = lastDay.getDate();
         const startingDayOfWeek = firstDay.getDay();
         
-        // Add previous month days
+        // 新增上個月的日期
         const prevMonth = new Date(year, month, 0);
         const daysInPrevMonth = prevMonth.getDate();
         
@@ -343,7 +368,7 @@ class UIElements {
             fragment.appendChild(dayElement);
         }
         
-        // Add current month days
+        // 新增當月日期
         for (let day = 1; day <= daysInMonth; day++) {
             const dayElement = this.createDayElement(
                 new Date(year, month, day),
@@ -352,7 +377,7 @@ class UIElements {
             fragment.appendChild(dayElement);
         }
         
-        // Add next month days to fill the grid
+        // 新增下個月的日期來填滿格子
         const totalCells = fragment.children.length;
         const remainingCells = 35 - totalCells; // 5 rows × 7 days
         
@@ -364,13 +389,13 @@ class UIElements {
             fragment.appendChild(dayElement);
         }
         
-        // Batch update DOM
+        // 批量更新DOM
         Utils.batchDOMUpdates(() => {
             calendar.appendChild(fragment);
         });
     }
 
-    // Create individual day element
+    // 創建單個日期元素
     createDayElement(date, isOtherMonth) {
         const dayElement = document.createElement('button');
         dayElement.className = 'calendar-day';
@@ -382,26 +407,20 @@ class UIElements {
             dayElement.classList.add('other-month');
         }
         
-        // Check if today
+        // 檢查是否為今天
         const today = new Date();
         if (Utils.formatDate(date) === Utils.formatDate(today)) {
             dayElement.classList.add('today');
             dayElement.setAttribute('aria-current', 'date');
         }
         
-        // Check if holiday
-        const data = app.dataStorage.loadData();
-        if (Utils.isHoliday(date, data.settings.customHolidays)) {
-            dayElement.classList.add('holiday');
-        }
-        
-        // Create day number
+        // 創建日期數字
         const dayNumber = document.createElement('div');
         dayNumber.className = 'day-number';
         dayNumber.textContent = date.getDate();
         dayElement.appendChild(dayNumber);
         
-        // Add scheduled staff
+        // 新增排班人員
         const staffIds = app.dataStorage.getSchedule(date, this.currentScheduleType);
         staffIds.forEach(staffId => {
             const staff = app.dataStorage.getStaff(staffId);
@@ -410,16 +429,17 @@ class UIElements {
                 staffElement.className = 'day-staff';
                 staffElement.textContent = staff.name;
                 staffElement.style.backgroundColor = staff.color;
+                staffElement.style.color = this.getContrastColor(staff.color);
                 dayElement.appendChild(staffElement);
             }
         });
         
-        // Add click event
+        // 新增點擊事件
         dayElement.addEventListener('click', () => {
             this.handleDayClick(date);
         });
         
-        // Add keyboard support
+        // 新增鍵盤支援
         dayElement.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
@@ -430,37 +450,51 @@ class UIElements {
         return dayElement;
     }
 
-    // Handle day click for scheduling
+    // 獲取對比色
+    getContrastColor(hexColor) {
+        // 將十六進制轉換為RGB
+        const r = parseInt(hexColor.slice(1, 3), 16);
+        const g = parseInt(hexColor.slice(3, 5), 16);
+        const b = parseInt(hexColor.slice(5, 7), 16);
+        
+        // 計算亮度
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        
+        // 返回黑色或白色
+        return brightness > 128 ? '#000000' : '#ffffff';
+    }
+
+    // 處理日期點擊事件
     handleDayClick(date) {
-        if (!app.selectedStaff) {
+        if (!this.selectedStaff) {
             NotificationManager.show('請先選擇一位人員', 'warning');
             return;
         }
         
         const staffIds = app.dataStorage.getSchedule(date, this.currentScheduleType);
-        const staffIndex = staffIds.indexOf(app.selectedStaff.id);
+        const staffIndex = staffIds.indexOf(this.selectedStaff.id);
         
         if (staffIndex >= 0) {
-            // Remove staff from schedule
+            // 從班表中移除人員
             staffIds.splice(staffIndex, 1);
-            NotificationManager.show(`已將 ${app.selectedStaff.name} 從 ${Utils.formatDate(date)} 移除`, 'info');
+            NotificationManager.show(`已將 ${this.selectedStaff.name} 從 ${Utils.formatDate(date)} 移除`, 'info');
         } else {
-            // Add staff to schedule
-            staffIds.push(app.selectedStaff.id);
-            NotificationManager.show(`已將 ${app.selectedStaff.name} 安排到 ${Utils.formatDate(date)}`, 'success');
+            // 新增人員到班表
+            staffIds.push(this.selectedStaff.id);
+            NotificationManager.show(`已將 ${this.selectedStaff.name} 安排到 ${Utils.formatDate(date)}`, 'success');
         }
         
         app.dataStorage.saveSchedule(date, staffIds, this.currentScheduleType);
         this.renderCalendar();
     }
 
-    // Render staff list with search and filter support
-    renderStaffList(searchTerm = '', filter = 'all') {
+    // 渲染人員列表
+    renderStaffList(searchTerm = '') {
         const staffList = document.getElementById('staffList');
         const data = app.dataStorage.loadData();
         let staff = data.staff;
         
-        // Apply search filter
+        // 套用搜尋篩選
         if (searchTerm) {
             staff = staff.filter(s => 
                 s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -468,13 +502,14 @@ class UIElements {
             );
         }
         
-        // Apply status filter
-        if (filter !== 'all') {
-            // For now, we'll consider all staff as active
-            // This can be extended based on requirements
+        // 根據班表類型篩選人員
+        if (this.currentScheduleType === 'main') {
+            staff = staff.filter(s => s.mainSchedule !== false);
+        } else if (this.currentScheduleType === 'weekend') {
+            staff = staff.filter(s => s.weekendSchedule === true);
         }
         
-        // Clear existing content
+        // 清除現有內容
         staffList.innerHTML = '';
         
         if (staff.length === 0) {
@@ -482,7 +517,7 @@ class UIElements {
             emptyState.className = 'empty-state';
             emptyState.innerHTML = `
                 <p>沒有找到符合條件的人員</p>
-                <button class="btn btn--primary" onclick="app.uiElements.showStaffModal()">
+                <button class="btn btn--primary" onclick="window.app.uiElements.showStaffModal()">
                     <i class="fas fa-plus"></i> 新增人員
                 </button>
             `;
@@ -490,7 +525,7 @@ class UIElements {
             return;
         }
         
-        // Create document fragment for batch DOM updates
+        // 創建文檔片段進行批量DOM更新
         const fragment = document.createDocumentFragment();
         
         staff.forEach(staffMember => {
@@ -498,19 +533,19 @@ class UIElements {
             fragment.appendChild(staffCard);
         });
         
-        // Batch update DOM
+        // 批量更新DOM
         Utils.batchDOMUpdates(() => {
             staffList.appendChild(fragment);
         });
     }
 
-    // Create staff card element
+    // 創建人員卡片元素
     createStaffCard(staff) {
         const card = document.createElement('div');
         card.className = 'staff-card';
         card.setAttribute('role', 'article');
         
-        if (app.selectedStaff && app.selectedStaff.id === staff.id) {
+        if (this.selectedStaff && this.selectedStaff.id === staff.id) {
             card.classList.add('selected');
         }
         
@@ -521,18 +556,20 @@ class UIElements {
             </div>
             ${staff.department ? `<div class="staff-department">${staff.department}</div>` : ''}
             <div class="staff-actions">
-                <button class="btn btn--sm btn--outline" onclick="app.uiElements.editStaff('${staff.id}')" aria-label="編輯 ${staff.name}">
+                <button class="btn btn--sm btn--outline" data-action="edit" data-staff-id="${staff.id}" aria-label="編輯 ${staff.name}">
                     <i class="fas fa-edit" aria-hidden="true"></i> 編輯
                 </button>
-                <button class="btn btn--sm btn--secondary" onclick="app.uiElements.selectStaff('${staff.id}')" aria-label="選擇 ${staff.name}">
+                <button class="btn btn--sm btn--secondary" data-action="select" data-staff-id="${staff.id}" aria-label="選擇 ${staff.name}">
                     <i class="fas fa-user-check" aria-hidden="true"></i> 選擇
                 </button>
             </div>
         `;
         
-        // Add click to select
+        // 新增點擊選擇功能
         card.addEventListener('click', (e) => {
-            if (!e.target.closest('button')) {
+            if (e.target.closest('button[data-action="edit"]')) {
+                this.editStaff(staff.id);
+            } else if (e.target.closest('button[data-action="select"]') || !e.target.closest('button')) {
                 this.selectStaff(staff.id);
             }
         });
@@ -540,17 +577,30 @@ class UIElements {
         return card;
     }
 
-    // Select staff for scheduling
+    // 選擇人員進行排班
     selectStaff(staffId) {
         const staff = app.dataStorage.getStaff(staffId);
         if (staff) {
-            app.selectedStaff = staff;
+            this.selectedStaff = staff;
             this.renderStaffList();
+            this.updateSelectedStaffInfo();
             NotificationManager.show(`已選擇 ${staff.name}`, 'info');
         }
     }
 
-    // Edit staff
+    // 更新選中人員資訊
+    updateSelectedStaffInfo() {
+        const selectedStaffInfo = document.getElementById('selectedStaffInfo');
+        if (this.selectedStaff) {
+            selectedStaffInfo.textContent = `已選擇：${this.selectedStaff.name}`;
+            selectedStaffInfo.style.color = this.selectedStaff.color;
+        } else {
+            selectedStaffInfo.textContent = '請選擇人員進行排班';
+            selectedStaffInfo.style.color = '';
+        }
+    }
+
+    // 編輯人員
     editStaff(staffId) {
         const staff = app.dataStorage.getStaff(staffId);
         if (staff) {
@@ -558,13 +608,13 @@ class UIElements {
         }
     }
 
-    // Show staff modal
+    // 顯示人員模態框
     showStaffModal(staff = null) {
         const modal = document.getElementById('staffModal');
         const title = document.getElementById('staffModalTitle');
         const form = document.getElementById('staffForm');
         
-        // Reset form
+        // 重置表單
         form.reset();
         
         if (staff) {
@@ -584,45 +634,32 @@ class UIElements {
         this.showModal('staffModal');
     }
 
-    // Show modal with accessibility support
+    // 顯示模態框
     showModal(modalId) {
         const modal = document.getElementById(modalId);
-        const previousFocus = document.activeElement;
-        
         modal.classList.add('active');
         modal.setAttribute('aria-hidden', 'false');
         
-        // Focus on first focusable element
-        const focusableElements = modal.querySelectorAll('input, button, select, textarea');
-        if (focusableElements.length > 0) {
-            focusableElements[0].focus();
-        }
+        // 聚焦到第一個可聚焦元素
+        setTimeout(() => {
+            const focusableElements = modal.querySelectorAll('input, button, select, textarea');
+            if (focusableElements.length > 0) {
+                focusableElements[0].focus();
+            }
+        }, 100);
         
-        // Store previous focus for restoration
-        modal.dataset.previousFocus = previousFocus;
-        
-        // Trap focus within modal
+        // 在模態框內捕獲焦點
         this.trapFocusInModal(modal);
     }
 
-    // Hide modal
+    // 隱藏模態框
     hideModal(modalId) {
         const modal = document.getElementById(modalId);
-        const previousFocus = document.querySelector(`[data-previous-focus]`) || document.body;
-        
         modal.classList.remove('active');
         modal.setAttribute('aria-hidden', 'true');
-        
-        // Restore focus
-        if (modal.dataset.previousFocus) {
-            const elementToFocus = document.querySelector(`[data-id="${modal.dataset.previousFocus}"]`) || previousFocus;
-            elementToFocus.focus();
-        }
-        
-        delete modal.dataset.previousFocus;
     }
 
-    // Trap focus within modal for accessibility
+    // 在模態框內捕獲焦點，提升可訪問性
     trapFocusInModal(modal) {
         const focusableElements = modal.querySelectorAll(
             'input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -631,7 +668,7 @@ class UIElements {
         const firstElement = focusableElements[0];
         const lastElement = focusableElements[focusableElements.length - 1];
         
-        modal.addEventListener('keydown', (e) => {
+        const handleKeyDown = (e) => {
             if (e.key === 'Tab') {
                 if (e.shiftKey) {
                     if (document.activeElement === firstElement) {
@@ -646,60 +683,63 @@ class UIElements {
                 }
             } else if (e.key === 'Escape') {
                 this.hideModal(modal.id);
+                modal.removeEventListener('keydown', handleKeyDown);
             }
-        });
+        };
+        
+        modal.addEventListener('keydown', handleKeyDown);
     }
 
-    // Update current month display
+    // 更新當前月份顯示
     updateCurrentMonth() {
         const currentMonthElement = document.getElementById('currentMonth');
         currentMonthElement.textContent = Utils.formatDate(this.currentDate, 'YYYY年MM月');
     }
 
-    // Navigate to previous month
+    // 導航到上個月
     previousMonth() {
         this.currentDate.setMonth(this.currentDate.getMonth() - 1);
         this.updateCurrentMonth();
         this.renderCalendar();
     }
 
-    // Navigate to next month
+    // 導航到下個月
     nextMonth() {
         this.currentDate.setMonth(this.currentDate.getMonth() + 1);
         this.updateCurrentMonth();
         this.renderCalendar();
     }
 
-    // Go to today
+    // 回到今天
     goToToday() {
         this.currentDate = new Date();
         this.updateCurrentMonth();
         this.renderCalendar();
     }
 
-    // Change schedule type
+    // 變更班表類型
     changeScheduleType(type) {
         this.currentScheduleType = type;
         this.renderCalendar();
+        this.renderStaffList();
     }
 
-    // Bind all event listeners
+    // 綁定所有事件監聽器
     bindEvents() {
-        // Navigation events
+        // 導航事件
         document.getElementById('prevMonth').addEventListener('click', () => this.previousMonth());
         document.getElementById('nextMonth').addEventListener('click', () => this.nextMonth());
         document.getElementById('todayBtn').addEventListener('click', () => this.goToToday());
         
-        // Schedule type change
+        // 班表類型變更
         document.getElementById('scheduleType').addEventListener('change', (e) => {
             this.changeScheduleType(e.target.value);
         });
         
-        // Staff management events
+        // 人員管理事件
         document.getElementById('addStaffBtn').addEventListener('click', () => this.showStaffModal());
-        document.getElementById('manageStaffBtn').addEventListener('click', () => this.showStaffModal());
         
-        // Search with debounce
+        // 搜尋功能（使用防抖）
         const searchInput = document.getElementById('staffSearch');
         const debouncedSearch = Utils.debounce((searchTerm) => {
             this.renderStaffList(searchTerm);
@@ -709,27 +749,21 @@ class UIElements {
             debouncedSearch(e.target.value);
         });
         
-        // Staff filter
-        document.getElementById('staffFilter').addEventListener('change', (e) => {
-            const searchTerm = document.getElementById('staffSearch').value;
-            this.renderStaffList(searchTerm, e.target.value);
-        });
-        
-        // Modal events
+        // 模態框事件
         this.bindModalEvents();
         
-        // Settings and export events
-        document.getElementById('settingsBtn').addEventListener('click', () => this.showModal('settingsModal'));
+        // 設定和匯出事件
+        document.getElementById('settingsBtn').addEventListener('click', () => this.showSettingsModal());
         document.getElementById('exportBtn').addEventListener('click', () => this.showModal('exportModal'));
         
-        // Quick actions
+        // 快速操作
         document.getElementById('clearScheduleBtn').addEventListener('click', () => this.clearSchedule());
         document.getElementById('autoScheduleBtn').addEventListener('click', () => this.autoSchedule());
     }
 
-    // Bind modal events
+    // 綁定模態框事件
     bindModalEvents() {
-        // Close modal events
+        // 關閉模態框事件
         document.querySelectorAll('.modal-close').forEach(closeBtn => {
             closeBtn.addEventListener('click', (e) => {
                 const modal = e.target.closest('.modal');
@@ -737,25 +771,37 @@ class UIElements {
             });
         });
         
-        // Cancel button events
-        document.getElementById('cancelStaffBtn').addEventListener('click', () => this.hideModal('staffModal'));
-        document.getElementById('cancelSettingsBtn').addEventListener('click', () => this.hideModal('settingsModal'));
-        document.getElementById('cancelExportBtn').addEventListener('click', () => this.hideModal('exportModal'));
+        // 取消按鈕事件
+        const cancelStaffBtn = document.getElementById('cancelStaffBtn');
+        const cancelSettingsBtn = document.getElementById('cancelSettingsBtn');
+        const cancelExportBtn = document.getElementById('cancelExportBtn');
         
-        // Save button events
-        document.getElementById('saveStaffBtn').addEventListener('click', () => this.saveStaff());
-        document.getElementById('saveSettingsBtn').addEventListener('click', () => this.saveSettings());
-        document.getElementById('startExportBtn').addEventListener('click', () => this.startExport());
+        if (cancelStaffBtn) {
+            cancelStaffBtn.addEventListener('click', () => this.hideModal('staffModal'));
+        }
+        if (cancelSettingsBtn) {
+            cancelSettingsBtn.addEventListener('click', () => this.hideModal('settingsModal'));
+        }
+        if (cancelExportBtn) {
+            cancelExportBtn.addEventListener('click', () => this.hideModal('exportModal'));
+        }
         
-        // Tab navigation in settings
-        document.querySelectorAll('.tab-button').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const tabName = e.target.dataset.tab;
-                this.switchTab(tabName);
-            });
-        });
+        // 儲存按鈕事件
+        const saveStaffBtn = document.getElementById('saveStaffBtn');
+        const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+        const startExportBtn = document.getElementById('startExportBtn');
         
-        // Close modal on backdrop click
+        if (saveStaffBtn) {
+            saveStaffBtn.addEventListener('click', () => this.saveStaff());
+        }
+        if (saveSettingsBtn) {
+            saveSettingsBtn.addEventListener('click', () => this.saveSettings());
+        }
+        if (startExportBtn) {
+            startExportBtn.addEventListener('click', () => this.startExport());
+        }
+        
+        // 點擊背景關閉模態框
         document.querySelectorAll('.modal').forEach(modal => {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
@@ -765,26 +811,25 @@ class UIElements {
         });
     }
 
-    // Save staff
+    // 儲存人員
     saveStaff() {
         const form = document.getElementById('staffForm');
-        const formData = new FormData(form);
         
         const staffData = {
             id: form.dataset.staffId || null,
-            name: formData.get('staffName') || document.getElementById('staffName').value,
-            department: formData.get('staffDepartment') || document.getElementById('staffDepartment').value,
+            name: document.getElementById('staffName').value,
+            department: document.getElementById('staffDepartment').value,
             color: document.getElementById('staffColor').value,
             mainSchedule: document.getElementById('staffMainSchedule').checked,
             weekendSchedule: document.getElementById('staffWeekendSchedule').checked
         };
         
-        // Validate form
+        // 驗證表單
         const errors = Utils.validateForm(staffData, {
             name: { required: true, minLength: 1 }
         });
         
-        // Clear previous errors
+        // 清除之前的錯誤
         document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
         
         if (Object.keys(errors).length > 0) {
@@ -800,6 +845,7 @@ class UIElements {
         if (app.dataStorage.saveStaff(staffData)) {
             this.hideModal('staffModal');
             this.renderStaffList();
+            this.updateStartingStaffOptions();
             NotificationManager.show(
                 staffData.id ? '人員資料已更新' : '新增人員成功',
                 'success'
@@ -807,31 +853,55 @@ class UIElements {
         }
     }
 
-    // Save settings
-    saveSettings() {
+    // 顯示設定模態框
+    showSettingsModal() {
+        this.updateStartingStaffOptions();
+        this.showModal('settingsModal');
+    }
+
+    // 更新起始人員選項
+    updateStartingStaffOptions() {
+        const select = document.getElementById('startingStaff');
+        if (!select) return;
+        
         const data = app.dataStorage.loadData();
         
-        data.settings = {
-            workDaysPerWeek: parseInt(document.getElementById('workDaysPerWeek').value),
-            weekendRotation: document.getElementById('weekendRotation').value,
-            exportFormat: document.getElementById('exportFormat').value,
-            customHolidays: document.getElementById('holidayList').value
-                .split('\n')
-                .map(line => line.trim())
-                .filter(line => line && line.match(/^\d{4}-\d{2}-\d{2}$/))
-        };
+        select.innerHTML = '<option value="">請選擇起始人員</option>';
+        
+        data.staff.forEach(staff => {
+            const option = document.createElement('option');
+            option.value = staff.id;
+            option.textContent = staff.name;
+            if (data.settings.startingStaff === staff.id) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+    }
+
+    // 儲存設定
+    saveSettings() {
+        const startingStaffSelect = document.getElementById('startingStaff');
+        if (!startingStaffSelect) return;
+        
+        const data = app.dataStorage.loadData();
+        data.settings.startingStaff = startingStaffSelect.value;
         
         if (app.dataStorage.saveData(data)) {
             this.hideModal('settingsModal');
-            this.renderCalendar(); // Re-render to show holiday changes
             NotificationManager.show('設定已儲存', 'success');
         }
     }
 
-    // Start export process
+    // 開始匯出流程
     async startExport() {
-        const format = document.getElementById('exportFileFormat').value;
-        const type = document.getElementById('exportType').value;
+        const formatSelect = document.getElementById('exportFormat');
+        const typeSelect = document.getElementById('exportType');
+        
+        if (!formatSelect || !typeSelect) return;
+        
+        const format = formatSelect.value;
+        const type = typeSelect.value;
         
         const progressContainer = document.getElementById('exportProgress');
         const progressFill = progressContainer.querySelector('.progress-fill');
@@ -839,7 +909,7 @@ class UIElements {
         
         progressContainer.classList.remove('hidden');
         
-        // Simulate export progress
+        // 模擬匯出進度
         const steps = ['準備資料...', '處理排班資訊...', '生成檔案...', '完成'];
         
         for (let i = 0; i < steps.length; i++) {
@@ -849,7 +919,7 @@ class UIElements {
             await new Promise(resolve => setTimeout(resolve, 500));
         }
         
-        // Generate and download file
+        // 生成並下載檔案
         const exportData = app.dataStorage.exportData(format);
         if (exportData) {
             this.downloadFile(exportData.filename, exportData.content, exportData.type);
@@ -861,7 +931,7 @@ class UIElements {
         progressFill.style.width = '0%';
     }
 
-    // Download file
+    // 下載檔案
     downloadFile(filename, content, type) {
         const blob = new Blob([content], { type });
         const url = URL.createObjectURL(blob);
@@ -874,27 +944,14 @@ class UIElements {
         URL.revokeObjectURL(url);
     }
 
-    // Switch tabs in settings modal
-    switchTab(tabName) {
-        // Update buttons
-        document.querySelectorAll('.tab-button').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tab === tabName);
-        });
-        
-        // Update panels
-        document.querySelectorAll('.tab-panel').forEach(panel => {
-            panel.classList.toggle('active', panel.id === `${tabName}Tab`);
-        });
-    }
-
-    // Clear schedule
+    // 清空班表
     clearSchedule() {
         if (confirm('確定要清空當前月份的班表嗎？此操作無法復原。')) {
             const year = this.currentDate.getFullYear();
             const month = this.currentDate.getMonth();
             const data = app.dataStorage.loadData();
             
-            // Remove schedules for current month
+            // 移除當前月份的班表
             Object.keys(data.schedules[this.currentScheduleType]).forEach(dateStr => {
                 const date = new Date(dateStr);
                 if (date.getFullYear() === year && date.getMonth() === month) {
@@ -909,7 +966,7 @@ class UIElements {
         }
     }
 
-    // Auto schedule (basic implementation)
+    // 自動排班（核心三輪序邏輯）
     autoSchedule() {
         const data = app.dataStorage.loadData();
         const availableStaff = data.staff.filter(s => 
@@ -925,32 +982,61 @@ class UIElements {
         const month = this.currentDate.getMonth();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         
-        let staffIndex = 0;
+        // 獲取輪序索引
+        let { monThu, fri, weekend, weekendSecondary } = data.settings.rotationIndexes;
+        
+        // 如果有設定起始人員，重置索引
+        if (data.settings.startingStaff) {
+            const startingIndex = availableStaff.findIndex(s => s.id === data.settings.startingStaff);
+            if (startingIndex >= 0) {
+                monThu = fri = weekend = weekendSecondary = startingIndex;
+            }
+        }
         
         for (let day = 1; day <= daysInMonth; day++) {
             const date = new Date(year, month, day);
-            const dayOfWeek = date.getDay();
+            const dayOfWeek = date.getDay(); // 0=週日, 1=週一, ..., 6=週六
             
-            // Skip based on schedule type
-            if (this.currentScheduleType === 'weekend' && dayOfWeek !== 0 && dayOfWeek !== 6) {
-                continue;
-            }
-            if (this.currentScheduleType === 'main' && (dayOfWeek === 0 || dayOfWeek === 6)) {
-                continue;
+            let staffToAssign = null;
+            
+            if (this.currentScheduleType === 'main') {
+                // 主要班表：三輪序邏輯
+                if (dayOfWeek >= 1 && dayOfWeek <= 4) {
+                    // 週一至週四：使用連續輪序
+                    staffToAssign = availableStaff[monThu % availableStaff.length];
+                    monThu = (monThu + 1) % availableStaff.length;
+                } else if (dayOfWeek === 5) {
+                    // 週五：使用獨立輪序
+                    staffToAssign = availableStaff[fri % availableStaff.length];
+                    fri = (fri + 1) % availableStaff.length;
+                } else if (dayOfWeek === 6 || dayOfWeek === 0) {
+                    // 週六日：使用共同輪序
+                    staffToAssign = availableStaff[weekend % availableStaff.length];
+                    weekend = (weekend + 1) % availableStaff.length;
+                }
+            } else if (this.currentScheduleType === 'weekend') {
+                // 次要班表：僅週末，使用獨立輪序
+                if (dayOfWeek === 6 || dayOfWeek === 0) {
+                    staffToAssign = availableStaff[weekendSecondary % availableStaff.length];
+                    weekendSecondary = (weekendSecondary + 1) % availableStaff.length;
+                }
             }
             
-            // Assign staff in rotation
-            const staff = availableStaff[staffIndex % availableStaff.length];
-            app.dataStorage.saveSchedule(date, [staff.id], this.currentScheduleType);
-            staffIndex++;
+            if (staffToAssign) {
+                app.dataStorage.saveSchedule(date, [staffToAssign.id], this.currentScheduleType);
+            }
         }
+        
+        // 儲存更新的輪序索引
+        data.settings.rotationIndexes = { monThu, fri, weekend, weekendSecondary };
+        app.dataStorage.saveData(data);
         
         this.renderCalendar();
         NotificationManager.show('自動排班完成', 'success');
     }
 }
 
-// Notification Manager
+// 通知管理器
 class NotificationManager {
     static show(message, type = 'info', duration = 3000) {
         const container = document.getElementById('notificationContainer');
@@ -979,21 +1065,21 @@ class NotificationManager {
             </button>
         `;
         
-        // Add close event
+        // 新增關閉事件
         const closeBtn = notification.querySelector('.notification-close');
         closeBtn.addEventListener('click', () => {
             this.hide(notification);
         });
         
-        // Add to container
+        // 新增到容器
         container.appendChild(notification);
         
-        // Show with animation
+        // 顯示動畫
         requestAnimationFrame(() => {
             notification.classList.add('show');
         });
         
-        // Auto hide
+        // 自動隱藏
         if (duration > 0) {
             setTimeout(() => {
                 this.hide(notification);
@@ -1011,33 +1097,29 @@ class NotificationManager {
     }
 }
 
-// Main Application Class
+// 主應用程式類別
 class ShiftToolApp {
     constructor() {
         this.dataStorage = new DataStorage();
         this.uiElements = new UIElements();
-        this.selectedStaff = null;
         this.isInitialized = false;
     }
 
-    // Initialize application
+    // 初始化應用程式
     async init() {
         if (this.isInitialized) return;
         
         try {
-            // Show loading screen
+            // 顯示載入畫面
             this.showLoadingScreen();
             
-            // Simulate loading time for better UX
+            // 模擬載入時間以提供更好的用戶體驗
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            // Initialize UI
+            // 初始化UI
             this.uiElements.init();
             
-            // Load settings
-            this.loadSettings();
-            
-            // Hide loading screen and show main app
+            // 隱藏載入畫面並顯示主應用程式
             this.hideLoadingScreen();
             
             this.isInitialized = true;
@@ -1051,7 +1133,7 @@ class ShiftToolApp {
         }
     }
 
-    // Show loading screen
+    // 顯示載入畫面
     showLoadingScreen() {
         const loadingScreen = document.getElementById('loadingScreen');
         const mainApp = document.getElementById('mainApp');
@@ -1060,7 +1142,7 @@ class ShiftToolApp {
         mainApp.classList.add('hidden');
     }
 
-    // Hide loading screen
+    // 隱藏載入畫面
     hideLoadingScreen() {
         const loadingScreen = document.getElementById('loadingScreen');
         const mainApp = document.getElementById('mainApp');
@@ -1073,19 +1155,7 @@ class ShiftToolApp {
         }, 300);
     }
 
-    // Load settings from storage
-    loadSettings() {
-        const data = this.dataStorage.loadData();
-        const settings = data.settings;
-        
-        // Apply settings to UI
-        document.getElementById('workDaysPerWeek').value = settings.workDaysPerWeek;
-        document.getElementById('weekendRotation').value = settings.weekendRotation;
-        document.getElementById('exportFormat').value = settings.exportFormat;
-        document.getElementById('holidayList').value = settings.customHolidays.join('\n');
-    }
-
-    // Handle app errors
+    // 處理應用程式錯誤
     handleError(error, context = '') {
         console.error(`Error in ${context}:`, error);
         NotificationManager.show(
@@ -1095,33 +1165,34 @@ class ShiftToolApp {
     }
 }
 
-// Initialize application when DOM is loaded
+// 初始化應用程式
 let app;
 
 document.addEventListener('DOMContentLoaded', () => {
     app = new ShiftToolApp();
+    window.app = app; // 全域存取
     app.init().catch(error => {
         console.error('Failed to initialize app:', error);
     });
 });
 
-// Handle page visibility change for performance
+// 處理頁面可見性變更以優化性能
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && app && app.isInitialized) {
-        // Refresh data when page becomes visible
+        // 當頁面變為可見時重新整理資料
         app.uiElements.renderCalendar();
         app.uiElements.renderStaffList();
     }
 });
 
-// Handle window resize with throttle
+// 處理視窗大小變更（使用節流）
 window.addEventListener('resize', Utils.throttle(() => {
     if (app && app.isInitialized) {
         app.uiElements.renderCalendar();
     }
 }, 250));
 
-// Export for global access
+// 匯出供全域存取
 window.ShiftToolApp = ShiftToolApp;
 window.Utils = Utils;
 window.NotificationManager = NotificationManager;

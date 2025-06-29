@@ -3,12 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SHIFT TOOL v6.3 (優化版)</title>
+    <title>排班管理工具 - 優化版</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <!-- Loading Screen -->
@@ -20,11 +17,11 @@
     <!-- Main Application -->
     <div id="mainApp" class="main-app hidden">
         <!-- Header -->
-        <header class="app-header">
+        <header class="header">
             <div class="container">
                 <div class="flex items-center justify-between">
                     <div class="app-title">
-                        <h1>SHIFT TOOL v6.3</h1>
+                        <h1>排班管理工具</h1>
                         <span class="version-badge">優化版</span>
                     </div>
                     <div class="header-actions">
@@ -60,10 +57,6 @@
                                     <i class="fas fa-plus" aria-hidden="true"></i>
                                     新增人員
                                 </button>
-                                <button id="manageStaffBtn" class="btn btn--secondary btn--sm">
-                                    <i class="fas fa-users" aria-hidden="true"></i>
-                                    管理人員
-                                </button>
                             </div>
                         </div>
 
@@ -76,7 +69,7 @@
                                     <option value="main">主要班表</option>
                                     <option value="weekend">次要班表（週末）</option>
                                 </select>
-                                <small id="scheduleTypeHelp" class="form-text">選擇要編輯的班表類型</small>
+                                <small id="scheduleTypeHelp" class="form-text">主要班表：週一至週四、週五、週六日使用不同輪序<br>次要班表：僅週末排班</small>
                             </div>
                         </div>
 
@@ -126,12 +119,8 @@
                 <section class="staff-section">
                     <div class="section-header">
                         <h3>人員列表</h3>
-                        <div class="staff-filters">
-                            <select id="staffFilter" class="form-control" aria-label="篩選人員">
-                                <option value="all">所有人員</option>
-                                <option value="active">活躍人員</option>
-                                <option value="inactive">非活躍人員</option>
-                            </select>
+                        <div class="staff-info">
+                            <span id="selectedStaffInfo" class="selected-staff">請選擇人員進行排班</span>
                         </div>
                     </div>
                     <div id="staffList" class="staff-list" role="list"></div>
@@ -140,9 +129,9 @@
         </main>
 
         <!-- Footer -->
-        <footer class="app-footer">
+        <footer class="footer">
             <div class="container">
-                <p>&copy; 2025 SHIFT TOOL v6.3 (優化版) - 智能排班管理系統</p>
+                <p>&copy; 2025 排班管理工具 - 優化版</p>
             </div>
         </footer>
     </div>
@@ -204,46 +193,19 @@
                 </button>
             </div>
             <div class="modal-body">
-                <div class="settings-tabs">
-                    <div class="tab-buttons">
-                        <button class="tab-button active" data-tab="general">一般設定</button>
-                        <button class="tab-button" data-tab="holidays">假期設定</button>
-                        <button class="tab-button" data-tab="export">匯出設定</button>
-                    </div>
-                    <div class="tab-content">
-                        <div id="generalTab" class="tab-panel active">
-                            <div class="form-group">
-                                <label for="workDaysPerWeek" class="form-label">每週工作天數</label>
-                                <select id="workDaysPerWeek" class="form-control">
-                                    <option value="5">5天</option>
-                                    <option value="6">6天</option>
-                                    <option value="7">7天</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="weekendRotation" class="form-label">週末輪值設定</label>
-                                <select id="weekendRotation" class="form-control">
-                                    <option value="weekly">每週輪替</option>
-                                    <option value="monthly">每月輪替</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div id="holidaysTab" class="tab-panel">
-                            <div class="form-group">
-                                <label for="holidayList" class="form-label">自定義假期</label>
-                                <textarea id="holidayList" class="form-control" rows="5" placeholder="請輸入假期日期，每行一個（格式：YYYY-MM-DD）"></textarea>
-                            </div>
-                        </div>
-                        <div id="exportTab" class="tab-panel">
-                            <div class="form-group">
-                                <label for="exportFormat" class="form-label">預設匯出格式</label>
-                                <select id="exportFormat" class="form-control">
-                                    <option value="excel">Excel (.xlsx)</option>
-                                    <option value="csv">CSV (.csv)</option>
-                                    <option value="pdf">PDF (.pdf)</option>
-                                </select>
-                            </div>
-                        </div>
+                <div class="form-group">
+                    <label for="startingStaff" class="form-label">自動排班起始人員</label>
+                    <select id="startingStaff" class="form-control">
+                        <option value="">請選擇起始人員</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">輪序說明</label>
+                    <div class="rotation-info">
+                        <p><strong>週一至週四：</strong>使用連續輪序</p>
+                        <p><strong>週五：</strong>使用獨立輪序</p>
+                        <p><strong>週六日：</strong>使用共同輪序</p>
+                        <p><strong>次要班表：</strong>僅週末，獨立輪序</p>
                     </div>
                 </div>
             </div>
@@ -268,14 +230,12 @@
                     <label for="exportType" class="form-label">匯出類型</label>
                     <select id="exportType" class="form-control">
                         <option value="current">當前月份</option>
-                        <option value="range">指定範圍</option>
                         <option value="all">全部資料</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="exportFileFormat" class="form-label">檔案格式</label>
-                    <select id="exportFileFormat" class="form-control">
-                        <option value="excel">Excel (.xlsx)</option>
+                    <label for="exportFormat" class="form-label">檔案格式</label>
+                    <select id="exportFormat" class="form-control">
                         <option value="csv">CSV (.csv)</option>
                         <option value="json">JSON (.json)</option>
                     </select>
