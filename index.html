@@ -3,19 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SHIFT TOOL v7.0 (優化版)</title>
+    <title>SHIFT TOOL v7.1 (完整版)</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
 </head>
 <body>
+    <!-- App Layout -->
     <div class="app-container">
+        <!-- Header -->
         <header class="header">
-            <h1 class="app-title">SHIFT TOOL v7.0</h1>
+            <h1 class="app-title">SHIFT TOOL v7.1</h1>
             <div class="header-controls">
+                <button class="btn btn--secondary theme-toggle" id="settingsBtn" aria-label="開啟設定"><i class="fas fa-cog"></i></button>
                 <button class="btn btn--secondary theme-toggle" id="themeToggle" aria-label="切換主題">🌙</button>
             </div>
         </header>
 
+        <!-- Navigation -->
         <nav class="nav-bar">
             <div class="nav-controls">
                 <button class="btn btn--outline nav-btn" id="prevMonthBtn">&lt;</button>
@@ -28,6 +32,7 @@
             </div>
         </nav>
         
+        <!-- Sidebar for Controls -->
         <aside class="sidebar">
             <div class="sidebar-section">
                 <h3>主要班表人員</h3>
@@ -52,8 +57,8 @@
 
             <div class="sidebar-section">
                 <h3>自動化功能</h3>
-                <button class="btn btn--secondary btn--full-width mt-8" id="autoScheduleBtn">自動產生初步班表</button>
-                <button class="btn btn--secondary btn--full-width mt-8" id="carryOverBtn">自動預排次月班表</button>
+                <button class="btn btn--outline btn--full-width mt-8" id="autoScheduleBtn">自動產生初步班表</button>
+                <button class="btn btn--outline btn--full-width mt-8" id="carryOverBtn">自動預排次月班表</button>
             </div>
             
             <div class="sidebar-section">
@@ -64,6 +69,7 @@
             </div>
         </aside>
 
+        <!-- Main Content: Calendar -->
         <main class="main-content">
             <div class="calendar-container">
                 <div class="calendar-header">
@@ -76,11 +82,12 @@
         </main>
     </div>
 
+    <!-- Modals -->
     <div class="modal" id="assignmentModal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3 id="assignmentModalTitle">指派主要班表</h3>
-                <button class="close-btn" id="closeAssignmentModal">&times;</button>
+                <button class="close-btn" data-modal-close>&times;</button>
             </div>
             <div class="modal-body">
                 <p id="noStaffMessage" class="hidden">請先在側邊欄新增人員。</p>
@@ -91,12 +98,81 @@
             </div>
         </div>
     </div>
+    
+    <div class="modal" id="settingsModal">
+        <div class="modal-content wide">
+            <div class="modal-header">
+                <h3><i class="fas fa-cog"></i> 進階設定</h3>
+                <button class="close-btn" data-modal-close>&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <h4>資料匯入</h4>
+                    <div class="form-group">
+                        <label for="fullSchedulePasteArea">貼上主要班表文字</label>
+                        <textarea id="fullSchedulePasteArea" rows="4" class="form-control" placeholder="可貼上包含 'XXX年Y月' 及 '姓名' 與日期標頭的純文字班表。"></textarea>
+                        <button id="importFromTextBtn" class="btn btn--primary btn--full-width mt-8">匯入貼上之文字</button>
+                    </div>
+                    <div class="form-group">
+                        <label for="holidayFileImport">匯入假期檔案 (.ics)</label>
+                        <input type="file" id="holidayFileImport" accept=".ics" class="form-control">
+                        <button id="importHolidaysBtn" class="btn btn--primary btn--full-width mt-8">匯入假期檔案</button>
+                    </div>
+                </div>
+                <div class="modal-section">
+                    <h4>查哨班表設定</h4>
+                    <p class="form-hint">此班表依「隔日休、週期重置」規則自動產生。</p>
+                    <form id="sentryScheduleForm" class="form-grid">
+                        <div class="form-group">
+                            <label for="sentryStartDate">起始日期:</label>
+                            <input type="date" id="sentryStartDate" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="sentryStartTime">起始時間:</label>
+                             <select id="sentryStartTime" class="form-control"></select>
+                        </div>
+                        <button type="submit" class="btn btn--primary">更新查哨起始條件</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="autoScheduleModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>自動排定主要班表</h3>
+                <button class="close-btn" data-modal-close>&times;</button>
+            </div>
+            <form id="autoScheduleForm">
+                <div class="modal-body">
+                    <p id="autoScheduleMessage" class="form-hint"></p>
+                    <div class="form-group">
+                        <label for="startMonThuSelect">週一至週四起始人員:</label>
+                        <select id="startMonThuSelect" class="form-control"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="startFriSelect">週五起始人員:</label>
+                        <select id="startFriSelect" class="form-control"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="startWeekendSelect">週末起始人員:</label>
+                        <select id="startWeekendSelect" class="form-control"></select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn--secondary" data-modal-close>取消</button>
+                    <button type="submit" class="btn btn--primary">確定執行</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <div class="modal" id="confirmModal">
         <div class="modal-content">
              <div class="modal-header">
                 <h3 id="confirmModalTitle"></h3>
-                <button class="close-btn" id="closeConfirmModal">&times;</button>
+                <button class="close-btn" data-modal-close>&times;</button>
             </div>
             <div class="modal-body">
                 <p id="confirmModalMessage"></p>
