@@ -934,6 +934,7 @@
         render: () => {
             if (!UIElements.monthYearDisplay || !UIElements.calendarGrid) return;
             UIElements.calendarGrid.innerHTML = '';
+            const fragment = document.createDocumentFragment();
 
             SecondaryScheduler.ensureScheduleForCurrentMonth();
 
@@ -950,12 +951,12 @@
                 const dayHeader = document.createElement('div');
                 dayHeader.className = 'text-center font-semibold text-sm py-2 bg-slate-100 rounded-t-md';
                 dayHeader.textContent = name;
-                UIElements.calendarGrid.appendChild(dayHeader);
+                fragment.appendChild(dayHeader);
             });
             for (let i = 0; i < dayOfWeek; i++) {
                 const blankCell = document.createElement('div');
                 blankCell.className = 'calendar-day bg-slate-50 rounded-md';
-                UIElements.calendarGrid.appendChild(blankCell);
+                fragment.appendChild(blankCell);
             }
             for (let day = 1; day <= daysInMonth; day++) {
                 const dayCell = document.createElement('div');
@@ -1003,8 +1004,6 @@
                 contentWrapper.className = 'day-content-wrapper';
 
                 if (AppState.activeView === 'primary') {
-                    dayCell.addEventListener('click', () => UI.openAssignmentModal(dateStr));
-
                     const primaryShiftCell = document.createElement('div');
                     primaryShiftCell.className = 'primary-shift-person';
                     const sentryCell = document.createElement('div');
@@ -1064,15 +1063,16 @@
                 }
 
                 dayCell.appendChild(contentWrapper);
-                UIElements.calendarGrid.appendChild(dayCell);
+                fragment.appendChild(dayCell);
             }
             const totalCells = dayOfWeek + daysInMonth;
             const remainingCells = (7 - (totalCells % 7)) % 7;
             for (let i = 0; i < remainingCells; i++) {
                 const blankCell = document.createElement('div');
                 blankCell.className = 'calendar-day bg-slate-50 rounded-md';
-                UIElements.calendarGrid.appendChild(blankCell);
+                fragment.appendChild(blankCell);
             }
+            UIElements.calendarGrid.appendChild(fragment);
         },
         changeMonth: (offset) => {
             DataStorage.saveData();
@@ -1853,6 +1853,15 @@
 
         // Event Listeners
         if (UIElements.clearAssignmentButton) UIElements.clearAssignmentButton.onclick = UI.clearAssignment;
+
+        if (UIElements.calendarGrid) {
+            UIElements.calendarGrid.addEventListener('click', (event) => {
+                if (AppState.activeView !== 'primary') return;
+                const targetDay = event.target.closest('.calendar-day[data-date]');
+                if (!targetDay || !UIElements.calendarGrid.contains(targetDay)) return;
+                UI.openAssignmentModal(targetDay.dataset.date);
+            });
+        }
 
         if (UIElements.staffFilterSelect) {
             UIElements.staffFilterSelect.addEventListener('change', (event) => {
