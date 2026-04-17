@@ -944,7 +944,12 @@
             const firstDayOfMonth = new Date(AppState.currentYear, AppState.currentMonth, 1);
             const lastDayOfMonth = new Date(AppState.currentYear, AppState.currentMonth + 1, 0);
             const daysInMonth = lastDayOfMonth.getDate();
-            const dayOfWeek = firstDayOfMonth.getDay();
+            const firstDayOfWeek = firstDayOfMonth.getDay();
+            const monthPrefix = `${AppState.currentYear}-${String(AppState.currentMonth + 1).padStart(2, '0')}`;
+            const sentryRestDayLabel = AppState.sentrySchedule.config.restDayLabel;
+            const secondaryGroupInfoMap = AppState.activeView === 'secondary'
+                ? new Map(AppState.secondarySchedule.groupDefinitions.map(group => [group.name, group]))
+                : null;
             UIElements.monthYearDisplay.textContent = `${AppState.currentYear}年 ${AppState.currentMonth + 1}月`;
             const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
             dayNames.forEach(name => {
@@ -953,16 +958,15 @@
                 dayHeader.textContent = name;
                 fragment.appendChild(dayHeader);
             });
-            for (let i = 0; i < dayOfWeek; i++) {
+            for (let i = 0; i < firstDayOfWeek; i++) {
                 const blankCell = document.createElement('div');
                 blankCell.className = 'calendar-day bg-slate-50 rounded-md';
                 fragment.appendChild(blankCell);
             }
+            let currentDayOfWeek = firstDayOfWeek;
             for (let day = 1; day <= daysInMonth; day++) {
                 const dayCell = document.createElement('div');
-                const dateStr = `${AppState.currentYear}-${String(AppState.currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const currentDate = new Date(AppState.currentYear, AppState.currentMonth, day);
-                const currentDayOfWeek = currentDate.getDay();
+                const dateStr = `${monthPrefix}-${String(day).padStart(2, '0')}`;
                 const isWeekend = currentDayOfWeek === 0 || currentDayOfWeek === 6;
                 const holidayName = AppState.holidays[dateStr];
 
@@ -1031,7 +1035,7 @@
                     }
 
                     const sentryShiftTime = AppState.sentrySchedule.shifts[dateStr];
-                    if (sentryShiftTime && sentryShiftTime !== AppState.sentrySchedule.config.restDayLabel) {
+                    if (sentryShiftTime && sentryShiftTime !== sentryRestDayLabel) {
                         sentryCell.innerHTML = `<i class="fas fa-search-location fa-fw mr-1"></i> ${sentryShiftTime.substring(0, 2)}`;
                     }
 
@@ -1048,7 +1052,7 @@
                     if (isWeekend && !holidayName) {
                         const secondaryShiftGroupName = AppState.secondarySchedule.shifts[dateStr];
                         if (secondaryShiftGroupName) {
-                            const groupInfo = AppState.secondarySchedule.groupDefinitions.find(g => g.name === secondaryShiftGroupName);
+                            const groupInfo = secondaryGroupInfoMap.get(secondaryShiftGroupName);
                             if (groupInfo) {
                                 const groupSpan = document.createElement('span');
                                 groupSpan.className = 'assigned-group text-lg';
@@ -1064,8 +1068,9 @@
 
                 dayCell.appendChild(contentWrapper);
                 fragment.appendChild(dayCell);
+                currentDayOfWeek = (currentDayOfWeek + 1) % 7;
             }
-            const totalCells = dayOfWeek + daysInMonth;
+            const totalCells = firstDayOfWeek + daysInMonth;
             const remainingCells = (7 - (totalCells % 7)) % 7;
             for (let i = 0; i < remainingCells; i++) {
                 const blankCell = document.createElement('div');
