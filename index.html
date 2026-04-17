@@ -150,18 +150,6 @@
             justify-content: center;
             min-height: 28px;
         }
-        .secondary-itinerary-note {
-            margin-top: 6px;
-            font-size: 0.75rem;
-            line-height: 1.25;
-            color: #1e3a8a;
-            background-color: #eff6ff;
-            border: 1px solid #bfdbfe;
-            border-radius: 6px;
-            padding: 4px 6px;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
 
         @media print {
             body > header, .modal, #primaryScheduleControls, #secondaryScheduleControlsAboveCalendar, body > main > header, body > div[style*="text-align: center"] {
@@ -207,7 +195,7 @@
             <nav class="mb-4 border-b border-gray-200" aria-label="Tabs">
                 <div class="-mb-px flex flex-wrap space-x-2 sm:space-x-8">
                     <button id="primaryScheduleTabButton" type="button" class="tab-button active-tab" role="tab" aria-selected="true">主要班表</button>
-                    <button id="secondaryScheduleTabButton" type="button" class="tab-button" role="tab" aria-selected="false">第二班表 (每日)</button>
+                    <button id="secondaryScheduleTabButton" type="button" class="tab-button" role="tab" aria-selected="false">第二班表 (假日)</button>
                 </div>
             </nav>
 
@@ -220,7 +208,7 @@
             <div id="secondaryScheduleControlsAboveCalendar" class="mb-4 hidden">
                 <button id="toggleSecondaryStaffInfoButton" type="button" class="mb-3 w-full bg-indigo-500 text-white py-2 px-4 rounded-md hover:bg-indigo-600 transition-colors">顯示組別成員</button>
                 <div id="secondaryStaffInfoDiv" class="text-sm text-slate-600 space-y-1 p-3 bg-slate-50 rounded-md border border-slate-200 hidden"></div>
-                 <p class="text-xs text-slate-500 mt-2">第二班表為自動固定輪替，會依基準日每日輪替。您可以到「管理設定」中修改組員名單。</p>
+                 <p class="text-xs text-slate-500 mt-2">第二班表為自動固定輪替，僅於假日排班。此為基於固定基準日的連續輪替。您可以到「管理設定」中修改組員名單。</p>
                  <div class="mt-4 text-right">
                     <button id="exportSecondaryScheduleButton" type="button" onclick="Exporter.exportSecondaryToICS()" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors">匯出第二班表 (.ics)</button>
                 </div>
@@ -307,7 +295,7 @@
                 </section>
 
                 <section aria-labelledby="secondary-schedule-title-modal" class="mt-6 border-t border-slate-200 pt-6">
-                    <h3 id="secondary-schedule-title-modal" class="text-lg font-semibold mb-3 text-slate-700">第二班表 (每日) 設定</h3>
+                    <h3 id="secondary-schedule-title-modal" class="text-lg font-semibold mb-3 text-slate-700">第二班表 (假日) 設定</h3>
                     <form id="secondaryScheduleForm" onsubmit="event.preventDefault(); SecondaryScheduler.updateConfigFromForm();">
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                             <div>
@@ -339,28 +327,7 @@
                         </div>
                         <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">更新第二班表設定並重算</button>
                     </form>
-                    <p class="text-xs text-slate-500 mt-2">修改人員或基準日後，將自動重新計算未來的第二班表每日輪替。</p>
-
-                    <div class="mt-5 border-t border-slate-200 pt-4">
-                        <h4 class="text-base font-semibold text-slate-700 mb-2">每日行程 (額外標註)</h4>
-                        <form id="secondaryItineraryForm" onsubmit="event.preventDefault(); SecondaryScheduler.updateDailyItineraryFromForm();">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label for="secItineraryDate" class="block text-sm font-medium text-slate-700 mb-1">行程日期:</label>
-                                    <input type="date" id="secItineraryDate" class="w-full p-2 border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
-                                </div>
-                                <div class="md:col-span-2">
-                                    <label for="secItineraryText" class="block text-sm font-medium text-slate-700 mb-1">行程內容:</label>
-                                    <textarea id="secItineraryText" rows="2" class="w-full p-2 border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="例如：09:00 集合、14:00 場勘"></textarea>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                                <button type="submit" class="w-full bg-indigo-500 text-white py-2 px-4 rounded-md hover:bg-indigo-600 transition-colors">新增 / 更新每日行程</button>
-                                <button type="button" onclick="SecondaryScheduler.removeDailyItineraryFromForm();" class="w-full bg-slate-500 text-white py-2 px-4 rounded-md hover:bg-slate-600 transition-colors">刪除該日行程</button>
-                            </div>
-                        </form>
-                        <p class="text-xs text-slate-500 mt-2">此功能為額外標註，不影響第二班表原本的每日輪替邏輯。</p>
-                    </div>
+                    <p class="text-xs text-slate-500 mt-2">修改人員或基準日後，將自動重新計算未來的第二班表假日輪替。</p>
                 </section>
             </section>
 
@@ -463,7 +430,6 @@
             ],
             anchor: { date: '2025-05-31', groupName: 'B' },
             shifts: {},
-            dailyItineraries: {},
             isStaffInfoVisible: false
         },
         sentrySchedule: {
@@ -518,7 +484,6 @@
         sentryStartDate: null,
         sentryStartTime: null,
         secGroupA: null, secGroupB: null, secGroupC: null, secAnchorDate: null, secAnchorGroup: null,
-        secItineraryDate: null, secItineraryText: null,
         confirmModal: null, confirmModalTitle: null, confirmModalMessage: null,
         acceptConfirmButton: null, cancelConfirmButton: null, closeConfirmModalButton: null,
         printScheduleButton: null,
@@ -540,7 +505,7 @@
         },
         getLocalStorageKey: (dataType) => {
             const version = "v8.3_weekday_holiday_rule";
-            if (['holidays_all', 'secondary_shifts', 'secondary_schedule_config', 'secondary_daily_itineraries', 'sentry_shifts', 'sentry_initial_condition'].includes(dataType)){
+            if (['holidays_all', 'secondary_shifts', 'secondary_schedule_config', 'sentry_shifts', 'sentry_initial_condition'].includes(dataType)){
                 return `shiftSchedule_${version}_${dataType}`;
             }
             const year = AppState.currentYear;
@@ -595,8 +560,6 @@
 
                 const secondaryShiftsData = localStorage.getItem(Utils.getLocalStorageKey('secondary_shifts'));
                 AppState.secondarySchedule.shifts = secondaryShiftsData ? JSON.parse(secondaryShiftsData) : {};
-                const secondaryItinerariesData = localStorage.getItem(Utils.getLocalStorageKey('secondary_daily_itineraries'));
-                AppState.secondarySchedule.dailyItineraries = secondaryItinerariesData ? JSON.parse(secondaryItinerariesData) : {};
                 const sentryShiftsData = localStorage.getItem(Utils.getLocalStorageKey('sentry_shifts'));
                 AppState.sentrySchedule.shifts = sentryShiftsData ? JSON.parse(sentryShiftsData) : {};
                 const sentryInitialData = localStorage.getItem(Utils.getLocalStorageKey('sentry_initial_condition'));
@@ -614,7 +577,6 @@
                 localStorage.setItem(Utils.getLocalStorageKey('staffColors'), JSON.stringify(AppState.staffColors));
                 localStorage.setItem(Utils.getLocalStorageKey('holidays_all'), JSON.stringify(AppState.holidays));
                 localStorage.setItem(Utils.getLocalStorageKey('secondary_shifts'), JSON.stringify(AppState.secondarySchedule.shifts));
-                localStorage.setItem(Utils.getLocalStorageKey('secondary_daily_itineraries'), JSON.stringify(AppState.secondarySchedule.dailyItineraries));
                 
                 // 儲存第二班表自訂設定
                 localStorage.setItem(Utils.getLocalStorageKey('secondary_schedule_config'), JSON.stringify({
@@ -739,7 +701,7 @@
     };
 
     const SecondaryScheduler = {
-        getGroupForDate: (dateStr) => {
+        getGroupForWeekend: (saturdayDateStr) => {
             const { groupDefinitions, anchor } = AppState.secondarySchedule;
             const numGroups = groupDefinitions.length;
             if (numGroups === 0) return null;
@@ -751,12 +713,12 @@
             }
 
             const anchorDate = new Date(anchor.date + 'T00:00:00Z');
-            const targetDate = new Date(dateStr + 'T00:00:00Z');
+            const targetSaturday = new Date(saturdayDateStr + 'T00:00:00Z');
 
-            const diffInMs = targetDate.getTime() - anchorDate.getTime();
-            const diffInDays = Math.round(diffInMs / (1000 * 60 * 60 * 24));
+            const diffInMs = targetSaturday.getTime() - anchorDate.getTime();
+            const diffInWeeks = Math.round(diffInMs / (1000 * 60 * 60 * 24 * 7));
 
-            const finalGroupIndex = (anchorGroupIndex + diffInDays % numGroups + numGroups) % numGroups;
+            const finalGroupIndex = (anchorGroupIndex + diffInWeeks % numGroups + numGroups) % numGroups;
 
             return groupDefinitions[finalGroupIndex];
         },
@@ -776,15 +738,32 @@
             shiftsToDelete.forEach(key => delete AppState.secondarySchedule.shifts[key]);
 
             for (let day = 1; day <= daysInMonth; day++) {
+                const currentDate = new Date(year, month_0_indexed, day);
+                const dayOfWeek = currentDate.getDay();
                 const utcDate = new Date(Date.UTC(year, month_0_indexed, day));
                 const dateStr = Utils.formatDateToKey(utcDate);
 
                 if (AppState.secondarySchedule.shifts[dateStr]) continue;
 
-                const dailyGroup = SecondaryScheduler.getGroupForDate(dateStr);
-                if (dailyGroup) {
-                    AppState.secondarySchedule.shifts[dateStr] = dailyGroup.name;
-                    needsSave = true;
+                if (dayOfWeek === 6) {
+                    const weekendGroup = SecondaryScheduler.getGroupForWeekend(dateStr);
+                    if (weekendGroup) {
+                        AppState.secondarySchedule.shifts[dateStr] = weekendGroup.name;
+                        needsSave = true;
+
+                        if (day + 1 <= daysInMonth) {
+                            const sundayUtcDate = new Date(Date.UTC(year, month_0_indexed, day + 1));
+                            AppState.secondarySchedule.shifts[Utils.formatDateToKey(sundayUtcDate)] = weekendGroup.name;
+                        }
+                    }
+                } else if (dayOfWeek === 0) {
+                    const prevDayUtc = new Date(utcDate.getTime() - (24 * 60 * 60 * 1000));
+                    const prevDayDateStr = Utils.formatDateToKey(prevDayUtc);
+                    const weekendGroup = SecondaryScheduler.getGroupForWeekend(prevDayDateStr);
+                    if (weekendGroup) {
+                        AppState.secondarySchedule.shifts[dateStr] = weekendGroup.name;
+                        needsSave = true;
+                    }
                 }
             }
             if (needsSave) { DataStorage.saveData(); }
@@ -818,48 +797,6 @@
             Calendar.render();
             Utils.showCustomAlert("第二班表設定已更新！", "success");
             UI.closeManagementModal();
-        },
-        updateDailyItineraryFromForm: () => {
-            const dateStr = UIElements.secItineraryDate ? UIElements.secItineraryDate.value : '';
-            const itineraryText = UIElements.secItineraryText ? UIElements.secItineraryText.value.trim() : '';
-
-            if (!dateStr) {
-                Utils.showCustomAlert("請先選擇行程日期。", "info");
-                return;
-            }
-            if (!itineraryText) {
-                Utils.showCustomAlert("請輸入行程內容。", "info");
-                return;
-            }
-
-            AppState.secondarySchedule.dailyItineraries[dateStr] = itineraryText;
-            DataStorage.saveData();
-            Calendar.render();
-            Utils.showCustomAlert(`${dateStr} 的第二班表每日行程已更新。`, "success");
-        },
-        removeDailyItineraryFromForm: () => {
-            const dateStr = UIElements.secItineraryDate ? UIElements.secItineraryDate.value : '';
-            if (!dateStr) {
-                Utils.showCustomAlert("請先選擇要刪除行程的日期。", "info");
-                return;
-            }
-            if (!AppState.secondarySchedule.dailyItineraries[dateStr]) {
-                Utils.showCustomAlert("該日期尚未設定每日行程。", "info");
-                return;
-            }
-
-            delete AppState.secondarySchedule.dailyItineraries[dateStr];
-            DataStorage.saveData();
-            Calendar.render();
-            Utils.showCustomAlert(`${dateStr} 的第二班表每日行程已刪除。`, "success");
-            if (UIElements.secItineraryText) UIElements.secItineraryText.value = '';
-        },
-        syncItineraryFormWithSelectedDate: () => {
-            if (!UIElements.secItineraryDate || !UIElements.secItineraryText) return;
-            const dateStr = UIElements.secItineraryDate.value;
-            UIElements.secItineraryText.value = dateStr
-                ? (AppState.secondarySchedule.dailyItineraries[dateStr] || '')
-                : '';
         }
     };
 
@@ -1056,7 +993,7 @@
                 }
                 dayHeader.appendChild(dayNumber);
 
-                if (AppState.activeView === 'primary') {
+                if (AppState.activeView === 'primary' && isWeekend && !holidayName) {
                     const secondaryShiftGroupName = AppState.secondarySchedule.shifts[dateStr];
                     if (secondaryShiftGroupName) {
                         const indicator = document.createElement('span');
@@ -1112,26 +1049,20 @@
                     contentWrapper.appendChild(holidayCell);
 
                 } else if (AppState.activeView === 'secondary') {
-                    const secondaryShiftGroupName = AppState.secondarySchedule.shifts[dateStr];
-                    if (secondaryShiftGroupName) {
-                        const groupInfo = secondaryGroupInfoMap.get(secondaryShiftGroupName);
-                        if (groupInfo) {
-                            const groupSpan = document.createElement('span');
-                            groupSpan.className = 'assigned-group text-lg';
-                            groupSpan.textContent = groupInfo.name;
-                            groupSpan.style.backgroundColor = groupInfo.color.background;
-                            groupSpan.style.color = groupInfo.color.text;
-                            groupSpan.style.borderColor = groupInfo.color.text;
-                            contentWrapper.appendChild(groupSpan);
+                    if (isWeekend && !holidayName) {
+                        const secondaryShiftGroupName = AppState.secondarySchedule.shifts[dateStr];
+                        if (secondaryShiftGroupName) {
+                            const groupInfo = secondaryGroupInfoMap.get(secondaryShiftGroupName);
+                            if (groupInfo) {
+                                const groupSpan = document.createElement('span');
+                                groupSpan.className = 'assigned-group text-lg';
+                                groupSpan.textContent = groupInfo.name;
+                                groupSpan.style.backgroundColor = groupInfo.color.background;
+                                groupSpan.style.color = groupInfo.color.text;
+                                groupSpan.style.borderColor = groupInfo.color.text;
+                                contentWrapper.appendChild(groupSpan);
+                            }
                         }
-                    }
-                    const itinerary = AppState.secondarySchedule.dailyItineraries[dateStr];
-                    if (itinerary) {
-                        const itineraryDiv = document.createElement('div');
-                        itineraryDiv.className = 'secondary-itinerary-note';
-                        itineraryDiv.title = itinerary;
-                        itineraryDiv.textContent = itinerary;
-                        contentWrapper.appendChild(itineraryDiv);
                     }
                 }
 
@@ -1375,8 +1306,6 @@
             UIElements.secGroupC = document.getElementById('secGroupC');
             UIElements.secAnchorDate = document.getElementById('secAnchorDate');
             UIElements.secAnchorGroup = document.getElementById('secAnchorGroup');
-            UIElements.secItineraryDate = document.getElementById('secItineraryDate');
-            UIElements.secItineraryText = document.getElementById('secItineraryText');
             UIElements.confirmModal = document.getElementById('confirmModal');
             UIElements.confirmModalTitle = document.getElementById('confirmModalTitle').querySelector('span');
             UIElements.confirmModalMessage = document.getElementById('confirmModalMessage');
@@ -1495,11 +1424,6 @@
             if (UIElements.secGroupC) UIElements.secGroupC.value = groupDefs[2]?.members.join(', ') || '';
             if (UIElements.secAnchorDate) UIElements.secAnchorDate.value = AppState.secondarySchedule.anchor.date || '';
             if (UIElements.secAnchorGroup) UIElements.secAnchorGroup.value = AppState.secondarySchedule.anchor.groupName || 'B';
-            if (UIElements.secItineraryDate && !UIElements.secItineraryDate.value) {
-                const now = new Date();
-                UIElements.secItineraryDate.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            }
-            SecondaryScheduler.syncItineraryFormWithSelectedDate();
         },
         updateSentryScheduleFormUI: () => {
             if (!UIElements.sentryStartDate || !UIElements.sentryStartTime) return;
@@ -1726,12 +1650,12 @@
             const shiftsToExport = {};
             const currentMonthPrefix = `${AppState.currentYear}-${String(AppState.currentMonth + 1).padStart(2, '0')}`;
             for (const dateStr in AppState.secondarySchedule.shifts) {
-                if (dateStr.startsWith(currentMonthPrefix)) {
+                if (dateStr.startsWith(currentMonthPrefix) && !AppState.holidays[dateStr]) {
                     shiftsToExport[dateStr] = AppState.secondarySchedule.shifts[dateStr];
                 }
             }
             if (Object.keys(shiftsToExport).length === 0) {
-                Utils.showCustomAlert("本月沒有可匯出的第二班表資料。", "info");
+                Utils.showCustomAlert("本月沒有可匯出的第二班表資料 (已排除國定假日)。", "info");
                 return;
             }
             let icsEvents = ['BEGIN:VCALENDAR', 'VERSION:2.0', `PRODID:-//SHIFTTOOL_${Utils.getLocalStorageKey('').split('_')[1]}//Local//ZH`];
@@ -1748,12 +1672,8 @@
                 icsEvents.push(`DTSTART;VALUE=DATE:${formatDateToICS(startDate)}`);
                 icsEvents.push(`DTEND;VALUE=DATE:${formatDateToICS(endDate)}`);
                 icsEvents.push(`SUMMARY:✈️${groupInfo ? groupInfo.name : groupName}組`);
-                const itinerary = AppState.secondarySchedule.dailyItineraries[dateStr];
                 if (groupInfo && groupInfo.members) {
-                    const itineraryText = itinerary ? `\\n行程: ${itinerary.replace(/\n/g, '\\n')}` : '';
-                    icsEvents.push(`DESCRIPTION:組員: ${groupInfo.members.join('、')}${itineraryText}`);
-                } else if (itinerary) {
-                    icsEvents.push(`DESCRIPTION:行程: ${itinerary.replace(/\n/g, '\\n')}`);
+                    icsEvents.push(`DESCRIPTION:組員: ${groupInfo.members.join('、')}`);
                 }
                 icsEvents.push('END:VEVENT');
             }
@@ -1960,9 +1880,6 @@
 
         if (UIElements.toggleSecondaryStaffInfoButton) {
             UIElements.toggleSecondaryStaffInfoButton.addEventListener('click', UI.toggleSecondaryStaffInfo);
-        }
-        if (UIElements.secItineraryDate) {
-            UIElements.secItineraryDate.addEventListener('change', SecondaryScheduler.syncItineraryFormWithSelectedDate);
         }
 
         if (UIElements.openManagementModalButton) UIElements.openManagementModalButton.addEventListener('click', UI.openManagementModal);
