@@ -195,7 +195,7 @@
             <nav class="mb-4 border-b border-gray-200" aria-label="Tabs">
                 <div class="-mb-px flex flex-wrap space-x-2 sm:space-x-8">
                     <button id="primaryScheduleTabButton" type="button" class="tab-button active-tab" role="tab" aria-selected="true">主要班表</button>
-                    <button id="secondaryScheduleTabButton" type="button" class="tab-button" role="tab" aria-selected="false">第二班表 (週末)</button>
+                    <button id="secondaryScheduleTabButton" type="button" class="tab-button" role="tab" aria-selected="false">第二班表 (每日)</button>
                 </div>
             </nav>
 
@@ -208,7 +208,7 @@
             <div id="secondaryScheduleControlsAboveCalendar" class="mb-4 hidden">
                 <button id="toggleSecondaryStaffInfoButton" type="button" class="mb-3 w-full bg-indigo-500 text-white py-2 px-4 rounded-md hover:bg-indigo-600 transition-colors">顯示組別成員</button>
                 <div id="secondaryStaffInfoDiv" class="text-sm text-slate-600 space-y-1 p-3 bg-slate-50 rounded-md border border-slate-200 hidden"></div>
-                 <p class="text-xs text-slate-500 mt-2">第二班表為自動固定輪替，僅於週末排班。此為基於固定基準日的連續輪替。您可以到「管理設定」中修改組員名單。</p>
+                 <p class="text-xs text-slate-500 mt-2">第二班表為自動固定輪替，會依基準日每日輪替。您可以到「管理設定」中修改組員名單。</p>
                  <div class="mt-4 text-right">
                     <button id="exportSecondaryScheduleButton" type="button" onclick="Exporter.exportSecondaryToICS()" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors">匯出第二班表 (.ics)</button>
                 </div>
@@ -295,7 +295,7 @@
                 </section>
 
                 <section aria-labelledby="secondary-schedule-title-modal" class="mt-6 border-t border-slate-200 pt-6">
-                    <h3 id="secondary-schedule-title-modal" class="text-lg font-semibold mb-3 text-slate-700">第二班表 (週末) 設定</h3>
+                    <h3 id="secondary-schedule-title-modal" class="text-lg font-semibold mb-3 text-slate-700">第二班表 (每日) 設定</h3>
                     <form id="secondaryScheduleForm" onsubmit="event.preventDefault(); SecondaryScheduler.updateConfigFromForm();">
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                             <div>
@@ -327,7 +327,7 @@
                         </div>
                         <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">更新第二班表設定並重算</button>
                     </form>
-                    <p class="text-xs text-slate-500 mt-2">修改人員或基準日後，將自動重新計算未來的第二班表週末輪替。</p>
+                    <p class="text-xs text-slate-500 mt-2">修改人員或基準日後，將自動重新計算未來的第二班表每日輪替。</p>
                 </section>
             </section>
 
@@ -701,7 +701,7 @@
     };
 
     const SecondaryScheduler = {
-        getGroupForWeekend: (saturdayDateStr) => {
+        getGroupForDate: (dateStr) => {
             const { groupDefinitions, anchor } = AppState.secondarySchedule;
             const numGroups = groupDefinitions.length;
             if (numGroups === 0) return null;
@@ -713,12 +713,12 @@
             }
 
             const anchorDate = new Date(anchor.date + 'T00:00:00Z');
-            const targetSaturday = new Date(saturdayDateStr + 'T00:00:00Z');
+            const targetDate = new Date(dateStr + 'T00:00:00Z');
 
-            const diffInMs = targetSaturday.getTime() - anchorDate.getTime();
-            const diffInWeeks = Math.round(diffInMs / (1000 * 60 * 60 * 24 * 7));
+            const diffInMs = targetDate.getTime() - anchorDate.getTime();
+            const diffInDays = Math.round(diffInMs / (1000 * 60 * 60 * 24));
 
-            const finalGroupIndex = (anchorGroupIndex + diffInWeeks % numGroups + numGroups) % numGroups;
+            const finalGroupIndex = (anchorGroupIndex + diffInDays % numGroups + numGroups) % numGroups;
 
             return groupDefinitions[finalGroupIndex];
         },
@@ -738,32 +738,15 @@
             shiftsToDelete.forEach(key => delete AppState.secondarySchedule.shifts[key]);
 
             for (let day = 1; day <= daysInMonth; day++) {
-                const currentDate = new Date(year, month_0_indexed, day);
-                const dayOfWeek = currentDate.getDay();
                 const utcDate = new Date(Date.UTC(year, month_0_indexed, day));
                 const dateStr = Utils.formatDateToKey(utcDate);
 
                 if (AppState.secondarySchedule.shifts[dateStr]) continue;
 
-                if (dayOfWeek === 6) {
-                    const weekendGroup = SecondaryScheduler.getGroupForWeekend(dateStr);
-                    if (weekendGroup) {
-                        AppState.secondarySchedule.shifts[dateStr] = weekendGroup.name;
-                        needsSave = true;
-
-                        if (day + 1 <= daysInMonth) {
-                            const sundayUtcDate = new Date(Date.UTC(year, month_0_indexed, day + 1));
-                            AppState.secondarySchedule.shifts[Utils.formatDateToKey(sundayUtcDate)] = weekendGroup.name;
-                        }
-                    }
-                } else if (dayOfWeek === 0) {
-                    const prevDayUtc = new Date(utcDate.getTime() - (24 * 60 * 60 * 1000));
-                    const prevDayDateStr = Utils.formatDateToKey(prevDayUtc);
-                    const weekendGroup = SecondaryScheduler.getGroupForWeekend(prevDayDateStr);
-                    if (weekendGroup) {
-                        AppState.secondarySchedule.shifts[dateStr] = weekendGroup.name;
-                        needsSave = true;
-                    }
+                const dailyGroup = SecondaryScheduler.getGroupForDate(dateStr);
+                if (dailyGroup) {
+                    AppState.secondarySchedule.shifts[dateStr] = dailyGroup.name;
+                    needsSave = true;
                 }
             }
             if (needsSave) { DataStorage.saveData(); }
@@ -993,7 +976,7 @@
                 }
                 dayHeader.appendChild(dayNumber);
 
-                if (AppState.activeView === 'primary' && isWeekend && !holidayName) {
+                if (AppState.activeView === 'primary') {
                     const secondaryShiftGroupName = AppState.secondarySchedule.shifts[dateStr];
                     if (secondaryShiftGroupName) {
                         const indicator = document.createElement('span');
@@ -1049,19 +1032,17 @@
                     contentWrapper.appendChild(holidayCell);
 
                 } else if (AppState.activeView === 'secondary') {
-                    if (isWeekend && !holidayName) {
-                        const secondaryShiftGroupName = AppState.secondarySchedule.shifts[dateStr];
-                        if (secondaryShiftGroupName) {
-                            const groupInfo = secondaryGroupInfoMap.get(secondaryShiftGroupName);
-                            if (groupInfo) {
-                                const groupSpan = document.createElement('span');
-                                groupSpan.className = 'assigned-group text-lg';
-                                groupSpan.textContent = groupInfo.name;
-                                groupSpan.style.backgroundColor = groupInfo.color.background;
-                                groupSpan.style.color = groupInfo.color.text;
-                                groupSpan.style.borderColor = groupInfo.color.text;
-                                contentWrapper.appendChild(groupSpan);
-                            }
+                    const secondaryShiftGroupName = AppState.secondarySchedule.shifts[dateStr];
+                    if (secondaryShiftGroupName) {
+                        const groupInfo = secondaryGroupInfoMap.get(secondaryShiftGroupName);
+                        if (groupInfo) {
+                            const groupSpan = document.createElement('span');
+                            groupSpan.className = 'assigned-group text-lg';
+                            groupSpan.textContent = groupInfo.name;
+                            groupSpan.style.backgroundColor = groupInfo.color.background;
+                            groupSpan.style.color = groupInfo.color.text;
+                            groupSpan.style.borderColor = groupInfo.color.text;
+                            contentWrapper.appendChild(groupSpan);
                         }
                     }
                 }
@@ -1650,12 +1631,12 @@
             const shiftsToExport = {};
             const currentMonthPrefix = `${AppState.currentYear}-${String(AppState.currentMonth + 1).padStart(2, '0')}`;
             for (const dateStr in AppState.secondarySchedule.shifts) {
-                if (dateStr.startsWith(currentMonthPrefix) && !AppState.holidays[dateStr]) {
+                if (dateStr.startsWith(currentMonthPrefix)) {
                     shiftsToExport[dateStr] = AppState.secondarySchedule.shifts[dateStr];
                 }
             }
             if (Object.keys(shiftsToExport).length === 0) {
-                Utils.showCustomAlert("本月沒有可匯出的第二班表資料 (已排除國定假日)。", "info");
+                Utils.showCustomAlert("本月沒有可匯出的第二班表資料。", "info");
                 return;
             }
             let icsEvents = ['BEGIN:VCALENDAR', 'VERSION:2.0', `PRODID:-//SHIFTTOOL_${Utils.getLocalStorageKey('').split('_')[1]}//Local//ZH`];
