@@ -222,14 +222,14 @@
             <div id="view-workspace" class="view-panel hidden animate-fade-in space-y-8 max-w-7xl mx-auto">
                 <!-- 拖曳上傳區 / 互動預覽區 -->
                 <div id="drop-zone" class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-10 flex flex-col items-center justify-center text-center transition-all bg-white dark:bg-[#111111] hover:border-brand-500 relative overflow-hidden group cursor-pointer min-h-[250px]">
-                    <input type="file" id="file-input" class="hidden" accept=".pdf,image/*">
+                    <input type="file" id="file-input" class="hidden" accept=".pdf,.txt,image/*,.dfenc" multiple>
                     <div id="upload-prompt" class="space-y-4">
                         <div class="w-16 h-16 mx-auto bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                             <i class="fa-solid fa-cloud-arrow-up text-2xl text-gray-500 dark:text-gray-400"></i>
                         </div>
                         <div>
                             <h3 class="text-lg font-medium">點擊或拖曳文件至此</h3>
-                            <p class="text-sm text-gray-500 mt-1">支援 PDF, PNG, JPG, DOCX (本地離線處理，確保隱私)</p>
+                            <p class="text-sm text-gray-500 mt-1">支援 PDF、PNG、JPG、TXT 與加密封裝檔 .dfenc（全程在瀏覽器本機處理）</p>
                         </div>
                     </div>
                     
@@ -256,6 +256,42 @@
 
                 <!-- 工具列表 (動態由 JS 生成) -->
                 <div id="tools-grid-container"></div>
+
+                <section id="result-panel" class="hidden bg-white dark:bg-[#111111] border border-surface-lightBorder dark:border-surface-darkBorder rounded-2xl p-5 shadow-sm">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                        <div>
+                            <h2 class="text-lg font-semibold flex items-center gap-2"><i class="fa-solid fa-square-poll-horizontal text-brand-500"></i>處理結果</h2>
+                            <p id="result-meta" class="text-xs text-gray-500 mt-1">尚未執行工具</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button id="btn-copy-result" class="text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded transition"><i class="fa-regular fa-copy mr-1"></i>複製文字</button>
+                            <button id="btn-download-result" class="text-xs bg-brand-500 hover:bg-brand-600 text-white px-3 py-1.5 rounded transition"><i class="fa-solid fa-download mr-1"></i>下載結果</button>
+                        </div>
+                    </div>
+                    <pre id="result-output" class="whitespace-pre-wrap text-sm bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl p-4 max-h-96 overflow-auto custom-scrollbar"></pre>
+                </section>
+            </div>
+
+            <div id="view-workflow" class="view-panel hidden animate-fade-in max-w-5xl mx-auto space-y-6">
+                <div class="bg-white dark:bg-[#111111] border border-surface-lightBorder dark:border-surface-darkBorder rounded-2xl p-6">
+                    <h1 class="text-2xl font-bold mb-2">Workflow Builder</h1>
+                    <p class="text-sm text-gray-500 mb-4">選擇要串接的工具，按下執行後會依序在目前上傳檔案上產生可下載結果。</p>
+                    <div id="workflow-steps" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4"></div>
+                    <button id="btn-run-workflow" class="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-play mr-2"></i>執行工作流程</button>
+                </div>
+            </div>
+
+            <div id="view-history" class="view-panel hidden animate-fade-in max-w-5xl mx-auto space-y-6">
+                <div class="bg-white dark:bg-[#111111] border border-surface-lightBorder dark:border-surface-darkBorder rounded-2xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h1 class="text-2xl font-bold">歷史紀錄</h1>
+                            <p class="text-sm text-gray-500">所有處理紀錄保存在本機 localStorage，不會上傳到伺服器。</p>
+                        </div>
+                        <button id="btn-clear-history" class="text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded transition">清空紀錄</button>
+                    </div>
+                    <div id="history-list" class="space-y-3"></div>
+                </div>
             </div>
 
         </div>
@@ -312,6 +348,9 @@
                 theme: localStorage.getItem('theme') || 'dark',
                 currentFile: null,
                 pdfDoc: null,
+                files: [],
+                selectedTool: null,
+                lastResult: null,
                 isAiPanelOpen: window.innerWidth >= 640
             };
 
@@ -337,7 +376,16 @@
                 sendChatBtn: document.getElementById('send-chat-btn'),
                 chatMessages: document.getElementById('chat-messages'),
                 toastContainer: document.getElementById('toast-container'),
-                toolsGridContainer: document.getElementById('tools-grid-container')
+                toolsGridContainer: document.getElementById('tools-grid-container'),
+                resultPanel: document.getElementById('result-panel'),
+                resultMeta: document.getElementById('result-meta'),
+                resultOutput: document.getElementById('result-output'),
+                btnCopyResult: document.getElementById('btn-copy-result'),
+                btnDownloadResult: document.getElementById('btn-download-result'),
+                workflowSteps: document.getElementById('workflow-steps'),
+                btnRunWorkflow: document.getElementById('btn-run-workflow'),
+                historyList: document.getElementById('history-list'),
+                btnClearHistory: document.getElementById('btn-clear-history')
             };
 
             // --- 工具資料定義 (動態渲染以節省 HTML 長度) ---
@@ -391,6 +439,8 @@
                 
                 applyTheme();
                 renderTools();
+                renderWorkflow();
+                renderHistory();
                 initChart();
                 bindEvents();
             }
@@ -444,7 +494,7 @@
                 els.dropZone.addEventListener('drop', (e) => {
                     e.preventDefault();
                     els.dropZone.classList.remove('drag-active');
-                    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+                    if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
                 });
                 els.dropZone.addEventListener('click', (e) => {
                     // 防止點擊預覽區按鈕時觸發上傳
@@ -452,33 +502,24 @@
                     if(!state.currentFile) els.fileInput.click();
                 });
                 els.fileInput.addEventListener('change', (e) => {
-                    if (e.target.files.length) handleFile(e.target.files[0]);
+                    if (e.target.files.length) handleFiles(e.target.files);
                 });
 
                 // 清除檔案
                 els.btnClearFile.addEventListener('click', (e) => {
                     e.stopPropagation();
                     state.currentFile = null;
+                    state.files = [];
                     state.pdfDoc = null;
                     els.fileInput.value = '';
                     els.previewContainer.classList.add('hidden');
                     els.uploadPrompt.classList.remove('hidden');
                 });
 
-                // 模擬工具執行
-                els.btnProcessMock.addEventListener('click', (e) => {
+                // 執行選定工具
+                els.btnProcessMock.addEventListener('click', async (e) => {
                     e.stopPropagation();
-                    showToast('正在初始化沙箱並執行分析...', 'info');
-                    els.loadingSpinner.classList.remove('hidden');
-                    
-                    setTimeout(() => {
-                        els.loadingSpinner.classList.add('hidden');
-                        showToast('處理完成！已將結果傳送至 AI 助理', 'success');
-                        
-                        // 觸發 AI 對話
-                        if(!state.isAiPanelOpen) toggleAi();
-                        simulateAiResponse(`我已分析完成 **${state.currentFile.name}**。檔案結構安全，共有 ${state.pdfDoc ? state.pdfDoc.numPages : '?'} 頁。我發現第 2 頁有潛在的賠償條款風險，需要為您提取詳細內容嗎？`);
-                    }, 2000);
+                    await executeSelectedTool();
                 });
 
                 // AI Chat
@@ -487,7 +528,7 @@
                     if(!text) return;
                     
                     // User message
-                    appendMessage('User', text);
+                    appendMessage('User', escapeHtml(text));
                     els.chatInput.value = '';
                     els.chatInput.style.height = 'auto';
 
@@ -495,7 +536,7 @@
                     setTimeout(() => {
                         const loadingId = appendMessage('AI', '<i class="fa-solid fa-ellipsis text-xl animate-pulse"></i>', true);
                         setTimeout(() => {
-                            document.getElementById(loadingId).innerHTML = `根據文件上下文分析：「${text}」 的相關內容主要位於第 3 段。已將該段落標註於文件中。<br><button class="mt-2 text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-2 py-1 rounded transition">跳至對應頁面</button>`;
+                            document.getElementById(loadingId).innerHTML = `根據文件上下文分析：「${escapeHtml(text)}」 的相關內容主要位於第 3 段。已將該段落標註於文件中。<br><button class="mt-2 text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-2 py-1 rounded transition">跳至對應頁面</button>`;
                         }, 1500);
                     }, 500);
                 };
@@ -507,6 +548,11 @@
                     this.style.height = 'auto';
                     this.style.height = (this.scrollHeight) + 'px';
                 });
+
+                els.btnCopyResult.addEventListener('click', copyResult);
+                els.btnDownloadResult.addEventListener('click', downloadLastResult);
+                els.btnRunWorkflow.addEventListener('click', runWorkflow);
+                els.btnClearHistory.addEventListener('click', () => { localStorage.removeItem('docflow-history'); renderHistory(); showToast('歷史紀錄已清空', 'success'); });
             }
 
             // --- 主題切換邏輯 ---
@@ -538,7 +584,7 @@
                     
                     cat.tools.forEach(tool => {
                         html += `
-                            <div class="tool-card bg-white dark:bg-[#111111] border border-surface-lightBorder dark:border-surface-darkBorder rounded-xl p-4 cursor-pointer relative overflow-hidden group">
+                            <div data-tool-id="${tool.id}" class="tool-card bg-white dark:bg-[#111111] border border-surface-lightBorder dark:border-surface-darkBorder rounded-xl p-4 cursor-pointer relative overflow-hidden group">
                                 <div class="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-black/5 dark:to-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <div class="flex items-start gap-3 relative z-10">
                                     <div class="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 group-hover:text-brand-500 transition-colors shrink-0">
@@ -559,14 +605,420 @@
 
                 // 為生成的卡片綁定點擊事件
                 document.querySelectorAll('.tool-card').forEach(card => {
-                    card.addEventListener('click', () => {
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                        showToast('請先在上方區域上傳檔案以使用此工具', 'info');
-                        els.dropZone.classList.add('ring-2', 'ring-brand-500', 'ring-offset-2', 'ring-offset-surface-light', 'dark:ring-offset-surface-dark');
-                        setTimeout(() => els.dropZone.classList.remove('ring-2', 'ring-brand-500', 'ring-offset-2', 'ring-offset-surface-light', 'dark:ring-offset-surface-dark'), 1000);
-                    });
+                    card.addEventListener('click', () => selectTool(card.dataset.toolId));
                 });
             }
+
+
+            function allTools() {
+                return toolCategories.flatMap(category => category.tools.map(tool => ({...tool, category: category.title})));
+            }
+
+            function getTool(toolId) {
+                return allTools().find(tool => tool.id === toolId);
+            }
+
+            function selectTool(toolId) {
+                state.selectedTool = toolId;
+                document.querySelectorAll('.tool-card').forEach(card => {
+                    const active = card.dataset.toolId === toolId;
+                    card.classList.toggle('ring-2', active);
+                    card.classList.toggle('ring-brand-500', active);
+                    card.classList.toggle('border-brand-500', active);
+                });
+                const tool = getTool(toolId);
+                const fileRequired = !['history', 'workflow'].includes(toolId);
+                showToast(`已選擇「${tool.name}」${fileRequired ? '，請上傳檔案後執行' : '，可直接執行'}`, 'info');
+                if (fileRequired && !state.currentFile) {
+                    els.dropZone.classList.add('ring-2', 'ring-brand-500', 'ring-offset-2', 'ring-offset-surface-light', 'dark:ring-offset-surface-dark');
+                    setTimeout(() => els.dropZone.classList.remove('ring-2', 'ring-brand-500', 'ring-offset-2', 'ring-offset-surface-light', 'dark:ring-offset-surface-dark'), 1200);
+                }
+            }
+
+            function renderWorkflow() {
+                const defaults = ['ocr', 'summary', 'risk', 'watermark'];
+                els.workflowSteps.innerHTML = allTools()
+                    .filter(tool => !['history', 'workflow'].includes(tool.id))
+                    .map(tool => `
+                        <label class="flex items-start gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#0a0a0a] cursor-pointer">
+                            <input type="checkbox" class="workflow-tool mt-1" value="${tool.id}" ${defaults.includes(tool.id) ? 'checked' : ''}>
+                            <span>
+                                <span class="block text-sm font-medium">${tool.name}</span>
+                                <span class="block text-xs text-gray-500">${tool.desc}</span>
+                            </span>
+                        </label>`).join('');
+            }
+
+            function renderHistory() {
+                const history = JSON.parse(localStorage.getItem('docflow-history') || '[]');
+                if (!history.length) {
+                    els.historyList.innerHTML = '<div class="text-sm text-gray-500 p-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">尚無處理紀錄。</div>';
+                    return;
+                }
+                els.historyList.innerHTML = history.map(item => `
+                    <div class="p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#0a0a0a]">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="font-medium text-sm">${escapeHtml(item.tool)}</div>
+                            <div class="text-xs text-gray-500">${escapeHtml(item.time)}</div>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1">${escapeHtml(item.files)}</div>
+                        <p class="text-sm mt-2 whitespace-pre-wrap">${escapeHtml(item.summary)}</p>
+                    </div>`).join('');
+            }
+
+            function addHistory(tool, summary) {
+                const history = JSON.parse(localStorage.getItem('docflow-history') || '[]');
+                history.unshift({
+                    tool,
+                    summary: summary.slice(0, 500),
+                    files: state.files.map(file => file.name).join(', ') || '無檔案',
+                    time: new Date().toLocaleString('zh-TW')
+                });
+                localStorage.setItem('docflow-history', JSON.stringify(history.slice(0, 50)));
+                renderHistory();
+            }
+
+            function escapeHtml(value) {
+                return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+            }
+
+            function setResult(title, text, blob = null, filename = 'docflow-result.txt') {
+                state.lastResult = { title, text, blob: blob || new Blob([text], { type: 'text/plain;charset=utf-8' }), filename };
+                els.resultPanel.classList.remove('hidden');
+                els.resultMeta.textContent = title;
+                els.resultOutput.textContent = text;
+                addHistory(title, text);
+                if (!state.isAiPanelOpen) document.getElementById('toggle-ai').click();
+                simulateAiResponse(`「${title}」已完成。結果已顯示於工具矩陣的處理結果區，也可直接下載。`);
+            }
+
+            async function copyResult() {
+                if (!state.lastResult) return showToast('目前沒有可複製的結果', 'warning');
+                await navigator.clipboard.writeText(state.lastResult.text);
+                showToast('結果文字已複製', 'success');
+            }
+
+            function downloadLastResult() {
+                if (!state.lastResult) return showToast('目前沒有可下載的結果', 'warning');
+                downloadBlob(state.lastResult.blob, state.lastResult.filename);
+            }
+
+            function downloadBlob(blob, filename) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            }
+
+            async function handleFiles(fileList) {
+                state.files = Array.from(fileList);
+                await handleFile(state.files[0]);
+                if (state.files.length > 1) showToast(`已載入 ${state.files.length} 個檔案，可執行合併、比對或批次工具`, 'success');
+            }
+
+            async function executeSelectedTool() {
+                if (!state.selectedTool) return showToast('請先在下方工具矩陣選擇一項功能', 'warning');
+                if (!state.currentFile && !['history', 'workflow'].includes(state.selectedTool)) return showToast('請先上傳檔案', 'warning');
+                const tool = getTool(state.selectedTool);
+                els.loadingSpinner.classList.remove('hidden');
+                try {
+                    await toolHandlers[state.selectedTool](tool);
+                } catch (error) {
+                    console.error(error);
+                    showToast(error.message || '工具執行失敗', 'error');
+                } finally {
+                    els.loadingSpinner.classList.add('hidden');
+                }
+            }
+
+            async function runWorkflow() {
+                if (!state.currentFile) return showToast('請先在工具矩陣上傳檔案', 'warning');
+                const selected = Array.from(document.querySelectorAll('.workflow-tool:checked')).map(input => input.value);
+                if (!selected.length) return showToast('請至少選擇一個工作流程步驟', 'warning');
+                const reports = [];
+                for (const toolId of selected) {
+                    const tool = getTool(toolId);
+                    if (toolHandlers[toolId]) {
+                        state.selectedTool = toolId;
+                        const text = await runToolForWorkflow(toolId, tool);
+                        reports.push(`## ${tool.name}\n${text}`);
+                    }
+                }
+                setResult('Workflow Builder', reports.join('\n\n'), null, 'docflow-workflow-report.txt');
+            }
+
+            async function runToolForWorkflow(toolId, tool) {
+                if (['merge', 'split', 'pdf2img', 'protect'].includes(toolId)) return '此步驟會產生個別下載檔，已略過自動串接。';
+                const text = await buildTextReport(toolId, tool);
+                return text || '已完成。';
+            }
+
+            async function extractText(file = state.currentFile) {
+                if (!file) return '';
+                if (file.type === 'text/plain') return file.text();
+                if (file.type === 'application/pdf') {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
+                    const chunks = [];
+                    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
+                        const page = await pdf.getPage(pageNo);
+                        const content = await page.getTextContent();
+                        chunks.push(`第 ${pageNo} 頁\n` + content.items.map(item => item.str).join(' '));
+                    }
+                    return chunks.join('\n\n');
+                }
+                if (file.type.startsWith('image/')) return runOcr(file);
+                return '';
+            }
+
+            async function runOcr(file = state.currentFile) {
+                if (!window.Tesseract) throw new Error('OCR 引擎尚未載入完成，請稍後再試');
+                const result = await Tesseract.recognize(file, 'eng+chi_tra', {
+                    logger: progress => {
+                        if (progress.status) els.resultMeta.textContent = `OCR ${progress.status} ${Math.round((progress.progress || 0) * 100)}%`;
+                    }
+                });
+                return result.data.text.trim();
+            }
+
+            function requirePdfFiles() {
+                const pdfs = state.files.filter(file => file.type === 'application/pdf');
+                if (!pdfs.length) throw new Error('此功能需要 PDF 檔案');
+                return pdfs;
+            }
+
+            async function loadPdfLibDocument(file) {
+                return PDFLib.PDFDocument.load(await file.arrayBuffer(), { ignoreEncryption: true });
+            }
+
+            async function mergePdfs(tool) {
+                const pdfs = requirePdfFiles();
+                if (pdfs.length < 2) throw new Error('PDF 合併需要至少兩個 PDF 檔案');
+                const merged = await PDFLib.PDFDocument.create();
+                for (const file of pdfs) {
+                    const pdf = await loadPdfLibDocument(file);
+                    const pages = await merged.copyPages(pdf, pdf.getPageIndices());
+                    pages.forEach(page => merged.addPage(page));
+                }
+                const bytes = await merged.save({ useObjectStreams: true });
+                const blob = new Blob([bytes], { type: 'application/pdf' });
+                setResult(tool.name, `已合併 ${pdfs.length} 個 PDF，共 ${merged.getPageCount()} 頁。`, blob, 'merged.pdf');
+            }
+
+            async function splitPdf(tool) {
+                const [file] = requirePdfFiles();
+                const pdf = await loadPdfLibDocument(file);
+                const range = prompt('請輸入要輸出的頁碼或範圍，例如 1-3,5。留空代表逐頁下載全部頁面：', '');
+                const pages = parsePageSelection(range, pdf.getPageCount());
+                for (const pageIndex of pages) {
+                    const out = await PDFLib.PDFDocument.create();
+                    const [copied] = await out.copyPages(pdf, [pageIndex]);
+                    out.addPage(copied);
+                    downloadBlob(new Blob([await out.save()], { type: 'application/pdf' }), `${file.name.replace(/\.pdf$/i, '')}-page-${pageIndex + 1}.pdf`);
+                }
+                setResult(tool.name, `已分拆並下載 ${pages.length} 個頁面 PDF。`, null, 'split-report.txt');
+            }
+
+            function parsePageSelection(value, total) {
+                if (!value) return Array.from({ length: total }, (_, index) => index);
+                const selected = new Set();
+                value.split(',').map(part => part.trim()).filter(Boolean).forEach(part => {
+                    const [start, end = start] = part.split('-').map(num => parseInt(num, 10));
+                    for (let page = Math.max(1, start); page <= Math.min(total, end); page++) selected.add(page - 1);
+                });
+                return Array.from(selected).sort((a, b) => a - b);
+            }
+
+            async function resavePdf(tool) {
+                const [file] = requirePdfFiles();
+                const pdf = await loadPdfLibDocument(file);
+                pdf.setProducer('DocFlow AI Suite');
+                const bytes = await pdf.save({ useObjectStreams: true, addDefaultPage: false });
+                const original = file.size;
+                const saved = bytes.byteLength;
+                const blob = new Blob([bytes], { type: 'application/pdf' });
+                setResult(tool.name, `已重新最佳化 PDF 結構。\n原始大小：${formatBytes(original)}\n輸出大小：${formatBytes(saved)}\n注意：若原檔已高度壓縮，大小可能不會下降。`, blob, `compressed-${file.name}`);
+            }
+
+            async function pdfToImage(tool) {
+                const [file] = requirePdfFiles();
+                const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+                const pageNo = Math.min(pdf.numPages, Math.max(1, parseInt(prompt(`輸入要轉成圖片的頁碼 (1-${pdf.numPages})：`, '1'), 10) || 1));
+                const page = await pdf.getPage(pageNo);
+                const viewport = page.getViewport({ scale: 2 });
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                setResult(tool.name, `已將第 ${pageNo} 頁輸出為 PNG 圖片。`, blob, `${file.name.replace(/\.pdf$/i, '')}-page-${pageNo}.png`);
+            }
+
+            async function protectFile(tool) {
+                const password = prompt('輸入密碼：若上傳 .dfenc 會解密；其他檔案會加密封裝。');
+                if (!password) throw new Error('已取消加密/解密');
+                if (state.currentFile.name.endsWith('.dfenc')) {
+                    const decrypted = await decryptBlob(state.currentFile, password);
+                    setResult(tool.name, '已成功解密封裝檔。', decrypted, state.currentFile.name.replace(/\.dfenc$/i, ''));
+                } else {
+                    const encrypted = await encryptBlob(state.currentFile, password);
+                    setResult(tool.name, '已使用 AES-GCM 將檔案加密為 .dfenc 封裝檔。', encrypted, `${state.currentFile.name}.dfenc`);
+                }
+            }
+
+            async function encryptBlob(file, password) {
+                const salt = crypto.getRandomValues(new Uint8Array(16));
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+                const key = await deriveKey(password, salt);
+                const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, await file.arrayBuffer()));
+                const header = new TextEncoder().encode(JSON.stringify({ name: file.name, type: file.type }) + '\n');
+                return new Blob([new Uint8Array([68, 70, 69, 49]), salt, iv, new Uint32Array([header.length]), header, cipher], { type: 'application/octet-stream' });
+            }
+
+            async function decryptBlob(file, password) {
+                const data = new Uint8Array(await file.arrayBuffer());
+                if (String.fromCharCode(...data.slice(0, 4)) !== 'DFE1') throw new Error('不是有效的 DocFlow 加密封裝檔');
+                const salt = data.slice(4, 20);
+                const iv = data.slice(20, 32);
+                const headerLength = new DataView(data.buffer, 32, 4).getUint32(0, true);
+                const headerStart = 36;
+                const meta = JSON.parse(new TextDecoder().decode(data.slice(headerStart, headerStart + headerLength)));
+                const cipher = data.slice(headerStart + headerLength);
+                const key = await deriveKey(password, salt);
+                const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
+                return new Blob([plain], { type: meta.type || 'application/octet-stream' });
+            }
+
+            async function deriveKey(password, salt) {
+                const baseKey = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+                return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 120000, hash: 'SHA-256' }, baseKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+            }
+
+            async function watermarkPdf(tool) {
+                const [file] = requirePdfFiles();
+                const text = prompt('請輸入浮水印文字：', 'CONFIDENTIAL');
+                if (!text) throw new Error('已取消浮水印');
+                const pdf = await loadPdfLibDocument(file);
+                const font = await pdf.embedFont(PDFLib.StandardFonts.HelveticaBold);
+                pdf.getPages().forEach(page => {
+                    const { width, height } = page.getSize();
+                    page.drawText(text, { x: width * 0.18, y: height * 0.48, size: Math.min(width, height) / 12, font, color: PDFLib.rgb(0.9, 0.1, 0.1), opacity: 0.28, rotate: PDFLib.degrees(-30) });
+                });
+                setResult(tool.name, `已為 ${pdf.getPageCount()} 頁加入浮水印「${text}」。`, new Blob([await pdf.save()], { type: 'application/pdf' }), `watermarked-${file.name}`);
+            }
+
+            async function organizePdf(tool) {
+                const [file] = requirePdfFiles();
+                const pdf = await loadPdfLibDocument(file);
+                const order = prompt(`輸入新的頁碼順序，可略過要刪除的頁面。例如 3,1,2（共 ${pdf.getPageCount()} 頁）：`, Array.from({ length: pdf.getPageCount() }, (_, index) => index + 1).join(','));
+                if (!order) throw new Error('已取消頁面管理');
+                const indices = order.split(',').map(num => parseInt(num.trim(), 10) - 1).filter(index => index >= 0 && index < pdf.getPageCount());
+                const out = await PDFLib.PDFDocument.create();
+                const pages = await out.copyPages(pdf, indices);
+                pages.forEach(page => out.addPage(page));
+                setResult(tool.name, `已依序輸出頁面：${indices.map(index => index + 1).join(', ')}。`, new Blob([await out.save()], { type: 'application/pdf' }), `organized-${file.name}`);
+            }
+
+            async function signPdf(tool) {
+                const [file] = requirePdfFiles();
+                const signer = prompt('請輸入簽署姓名或簽章文字：', 'Signed by DocFlow');
+                if (!signer) throw new Error('已取消電子簽名');
+                const pdf = await loadPdfLibDocument(file);
+                const page = pdf.getPage(0);
+                const font = await pdf.embedFont(PDFLib.StandardFonts.HelveticaBoldOblique);
+                page.drawRectangle({ x: 36, y: 36, width: 260, height: 58, borderColor: PDFLib.rgb(0.05, 0.65, 0.9), borderWidth: 1.5, color: PDFLib.rgb(0.94, 0.98, 1), opacity: 0.9 });
+                page.drawText(signer, { x: 52, y: 68, size: 18, font, color: PDFLib.rgb(0.02, 0.35, 0.6) });
+                page.drawText(new Date().toLocaleString('zh-TW'), { x: 52, y: 50, size: 9, color: PDFLib.rgb(0.25, 0.25, 0.25) });
+                setResult(tool.name, '已在第一頁左下角加上可見簽署章與時間戳。', new Blob([await pdf.save()], { type: 'application/pdf' }), `signed-${file.name}`);
+            }
+
+            function summarize(text) {
+                const sentences = text.replace(/\s+/g, ' ').split(/(?<=[。！？.!?])\s*/).filter(Boolean);
+                return sentences.slice(0, 6).join('\n') || text.slice(0, 800) || '未擷取到可摘要文字。';
+            }
+
+            function redactText(text) {
+                return text
+                    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[EMAIL]')
+                    .replace(/\b\d{3}[- ]?\d{2}[- ]?\d{4}\b/g, '[SSN]')
+                    .replace(/\b(?:\+?\d[\d -]{7,}\d)\b/g, '[PHONE]')
+                    .replace(/\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b/g, '[CARD]');
+            }
+
+            function riskReport(text) {
+                const keywords = ['賠償', '違約金', '無限責任', '單方', '終止', '保密', '管轄', 'indemnify', 'liability', 'terminate', 'confidential'];
+                const lines = text.split(/\n+/).filter(line => keywords.some(keyword => line.toLowerCase().includes(keyword.toLowerCase())));
+                return lines.length ? lines.map((line, index) => `${index + 1}. ${line.slice(0, 220)}`).join('\n') : '未偵測到常見高風險關鍵字；仍建議由專業人員複核。';
+            }
+
+            async function buildTextReport(toolId, tool) {
+                const text = await extractText();
+                if (toolId === 'ocr') return text || 'OCR 未辨識到文字。';
+                if (toolId === 'redact') return redactText(text);
+                if (toolId === 'summary') return summarize(text);
+                if (toolId === 'risk') return riskReport(text);
+                if (toolId === 'search') {
+                    const query = prompt('輸入要搜尋的語意/關鍵字：');
+                    if (!query) throw new Error('已取消搜尋');
+                    const hits = text.split(/\n+/).filter(line => line.toLowerCase().includes(query.toLowerCase()));
+                    return hits.length ? hits.join('\n') : `找不到「${query}」的直接命中。`;
+                }
+                if (toolId === 'diff') {
+                    if (state.files.length < 2) throw new Error('差異比對需要至少兩個 PDF、TXT 或圖片檔');
+                    const [a, b] = await Promise.all([extractText(state.files[0]), extractText(state.files[1])]);
+                    return makeDiff(a, b);
+                }
+                if (toolId === 'batch') {
+                    const reports = [];
+                    for (const file of state.files) reports.push(`## ${file.name}\n${summarize(await extractText(file))}`);
+                    return reports.join('\n\n');
+                }
+                return '';
+            }
+
+            function makeDiff(a, b) {
+                const left = new Set(a.split(/\n+/).map(line => line.trim()).filter(Boolean));
+                const right = new Set(b.split(/\n+/).map(line => line.trim()).filter(Boolean));
+                const removed = [...left].filter(line => !right.has(line)).slice(0, 80);
+                const added = [...right].filter(line => !left.has(line)).slice(0, 80);
+                return [`移除/變更：`, ...removed.map(line => `- ${line}`), '', '新增：', ...added.map(line => `+ ${line}`)].join('\n');
+            }
+
+            function formatBytes(bytes) {
+                if (!bytes) return '0 B';
+                const units = ['B', 'KB', 'MB', 'GB'];
+                const index = Math.floor(Math.log(bytes) / Math.log(1024));
+                return `${(bytes / Math.pow(1024, index)).toFixed(2)} ${units[index]}`;
+            }
+
+            const textToolHandler = async tool => {
+                const text = await buildTextReport(tool.id, tool);
+                setResult(tool.name, text, null, `${tool.id}-result.txt`);
+            };
+
+            const toolHandlers = {
+                merge: mergePdfs,
+                split: splitPdf,
+                compress: resavePdf,
+                pdf2img: pdfToImage,
+                protect: protectFile,
+                watermark: watermarkPdf,
+                organize: organizePdf,
+                sign: signPdf,
+                ocr: textToolHandler,
+                redact: textToolHandler,
+                summary: textToolHandler,
+                diff: textToolHandler,
+                risk: textToolHandler,
+                search: textToolHandler,
+                batch: textToolHandler,
+                history: () => document.querySelector('[data-target="history"]').click(),
+                workflow: () => document.querySelector('[data-target="workflow"]').click()
+            };
 
             // --- 處理檔案上傳與預覽 (整合 PDF.js) ---
             async function handleFile(file) {
