@@ -10,7 +10,7 @@
     <!-- FontAwesome 圖示 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Tailwind CSS (透過 CDN 進行動態編譯，模擬完整的構建環境) -->
+    <!-- Tailwind CSS (透過 CDN 進行動態編譯) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -165,27 +165,27 @@
             <div id="view-dashboard" class="view-panel animate-fade-in max-w-7xl mx-auto space-y-6">
                 <h1 class="text-2xl font-bold">歡迎回來，<span class="text-gradient">企業用戶</span></h1>
                 
-                <!-- 統計卡片 -->
+                <!-- 統計卡片：僅呈現本機歷史紀錄計算出的實際資料 -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div class="bg-white dark:bg-[#111111] p-5 rounded-xl border border-surface-lightBorder dark:border-surface-darkBorder shadow-sm">
                         <div class="text-gray-500 text-sm mb-1">今日處理文件</div>
-                        <div class="text-3xl font-semibold">1,284</div>
-                        <div class="text-green-500 text-xs mt-2"><i class="fa-solid fa-arrow-trend-up"></i> +12.5%</div>
+                        <div id="stat-today-files" class="text-3xl font-semibold">0</div>
+                        <div id="stat-today-note" class="text-gray-500 text-xs mt-2">等待實際處理紀錄</div>
                     </div>
                     <div class="bg-white dark:bg-[#111111] p-5 rounded-xl border border-surface-lightBorder dark:border-surface-darkBorder shadow-sm">
-                        <div class="text-gray-500 text-sm mb-1">AI 呼叫次數</div>
-                        <div class="text-3xl font-semibold">8,492</div>
-                        <div class="text-green-500 text-xs mt-2"><i class="fa-solid fa-arrow-trend-up"></i> +5.2%</div>
+                        <div class="text-gray-500 text-sm mb-1">AI / 文字工具執行</div>
+                        <div id="stat-ai-calls" class="text-3xl font-semibold">0</div>
+                        <div class="text-gray-500 text-xs mt-2">由瀏覽器歷史紀錄統計</div>
                     </div>
                     <div class="bg-white dark:bg-[#111111] p-5 rounded-xl border border-surface-lightBorder dark:border-surface-darkBorder shadow-sm">
-                        <div class="text-gray-500 text-sm mb-1">攔截高風險條款</div>
-                        <div class="text-3xl font-semibold text-orange-500">47</div>
-                        <div class="text-gray-500 text-xs mt-2">來自 12 份合約</div>
+                        <div class="text-gray-500 text-sm mb-1">偵測風險條款</div>
+                        <div id="stat-risk-hits" class="text-3xl font-semibold text-orange-500">0</div>
+                        <div id="stat-risk-note" class="text-gray-500 text-xs mt-2">尚未執行風險分析</div>
                     </div>
                     <div class="bg-white dark:bg-[#111111] p-5 rounded-xl border border-surface-lightBorder dark:border-surface-darkBorder shadow-sm">
                         <div class="text-gray-500 text-sm mb-1">本地儲存空間</div>
-                        <div class="text-3xl font-semibold">24<span class="text-lg">MB</span></div>
-                        <div class="text-gray-500 text-xs mt-2">IndexedDB 暫存區</div>
+                        <div id="stat-local-storage" class="text-3xl font-semibold">0<span class="text-lg">KB</span></div>
+                        <div class="text-gray-500 text-xs mt-2">localStorage 實際使用量</div>
                     </div>
                 </div>
 
@@ -197,32 +197,8 @@
                     </div>
                     <div class="bg-white dark:bg-[#111111] p-5 rounded-xl border border-surface-lightBorder dark:border-surface-darkBorder shadow-sm flex flex-col">
                         <h2 class="font-semibold mb-4 text-sm text-gray-500 flex justify-between">最近文件 <a href="#" class="text-brand-500 font-normal">檢視全部</a></h2>
-                        <ul class="space-y-3 flex-1">
-                            <!-- Mock Recent Files -->
-                            <li class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md cursor-pointer transition-colors">
-                                <div class="w-8 h-8 rounded bg-red-100 text-red-500 flex items-center justify-center text-xs"><i class="fa-solid fa-file-pdf"></i></div>
-                                <div class="flex-1 overflow-hidden">
-                                    <div class="text-sm font-medium truncate">2026_Q2_Financial_Report.pdf</div>
-                                    <div class="text-xs text-gray-500">10 分鐘前 • 2.4 MB</div>
-                                </div>
-                                <i class="fa-solid fa-ellipsis-vertical text-gray-400 p-2"></i>
-                            </li>
-                            <li class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md cursor-pointer transition-colors">
-                                <div class="w-8 h-8 rounded bg-blue-100 text-blue-500 flex items-center justify-center text-xs"><i class="fa-solid fa-file-word"></i></div>
-                                <div class="flex-1 overflow-hidden">
-                                    <div class="text-sm font-medium truncate">NDA_TechCorp_Draft.docx</div>
-                                    <div class="text-xs text-gray-500">1 小時前 • AI 風險掃描完成</div>
-                                </div>
-                                <i class="fa-solid fa-ellipsis-vertical text-gray-400 p-2"></i>
-                            </li>
-                            <li class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md cursor-pointer transition-colors">
-                                <div class="w-8 h-8 rounded bg-purple-100 text-purple-500 flex items-center justify-center text-xs"><i class="fa-solid fa-file-image"></i></div>
-                                <div class="flex-1 overflow-hidden">
-                                    <div class="text-sm font-medium truncate">Scan_Invoice_0892.jpg</div>
-                                    <div class="text-xs text-gray-500">昨天 • OCR 辨識完成</div>
-                                </div>
-                                <i class="fa-solid fa-ellipsis-vertical text-gray-400 p-2"></i>
-                            </li>
+                        <ul id="recent-files-list" class="space-y-3 flex-1">
+                            <li class="text-sm text-gray-500 p-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">尚無實際處理文件。</li>
                         </ul>
                     </div>
                 </div>
@@ -251,7 +227,7 @@
                                 <span id="security-badge" class="px-2 py-0.5 text-[10px] bg-green-100 text-green-700 rounded border border-green-200"><i class="fa-solid fa-shield-check"></i> 安全沙箱</span>
                             </div>
                             <div class="flex gap-2 w-full sm:w-auto">
-                                <button id="btn-process-mock" class="flex-1 sm:flex-none text-xs bg-brand-500 hover:bg-brand-600 text-white px-3 py-1.5 rounded transition">執行選定工具</button>
+                                <button id="btn-process" class="flex-1 sm:flex-none text-xs bg-brand-500 hover:bg-brand-600 text-white px-3 py-1.5 rounded transition">執行選定工具</button>
                                 <button id="btn-clear-file" class="flex-1 sm:flex-none text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded transition">清除</button>
                             </div>
                         </div>
@@ -381,7 +357,7 @@
                 pdfCanvas: document.getElementById('pdf-canvas'),
                 loadingSpinner: document.getElementById('loading-spinner'),
                 btnClearFile: document.getElementById('btn-clear-file'),
-                btnProcessMock: document.getElementById('btn-process-mock'),
+                btnProcess: document.getElementById('btn-process'),
                 chatInput: document.getElementById('chat-input'),
                 sendChatBtn: document.getElementById('send-chat-btn'),
                 chatMessages: document.getElementById('chat-messages'),
@@ -395,7 +371,14 @@
                 workflowSteps: document.getElementById('workflow-steps'),
                 btnRunWorkflow: document.getElementById('btn-run-workflow'),
                 historyList: document.getElementById('history-list'),
-                btnClearHistory: document.getElementById('btn-clear-history')
+                btnClearHistory: document.getElementById('btn-clear-history'),
+                statTodayFiles: document.getElementById('stat-today-files'),
+                statTodayNote: document.getElementById('stat-today-note'),
+                statAiCalls: document.getElementById('stat-ai-calls'),
+                statRiskHits: document.getElementById('stat-risk-hits'),
+                statRiskNote: document.getElementById('stat-risk-note'),
+                statLocalStorage: document.getElementById('stat-local-storage'),
+                recentFilesList: document.getElementById('recent-files-list')
             };
 
             // --- 工具資料定義 (動態渲染以節省 HTML 長度) ---
@@ -409,6 +392,7 @@
                         { id: 'split', name: 'PDF 分拆', desc: '依頁碼或範圍拆分 PDF', icon: 'fa-scissors' },
                         { id: 'compress', name: 'PDF 壓縮', desc: '最佳化檔案大小以便傳輸', icon: 'fa-compress' },
                         { id: 'pdf2img', name: 'PDF 轉圖片', desc: '將頁面轉為 JPG/PNG', icon: 'fa-image' },
+                        { id: 'pdf2md', name: 'PDF 轉 Markdown', desc: '擷取 PDF 文字並輸出 .md 結構化文件', icon: 'fa-file-lines' },
                         { id: 'protect', name: 'PDF 加密/解密', desc: '設定或解除密碼與權限', icon: 'fa-lock' },
                         { id: 'watermark', name: '加浮水印', desc: '批次添加文字或圖片浮水印', icon: 'fa-stamp' },
                         { id: 'organize', name: '頁面管理', desc: '拖曳重新排序、刪除、旋轉', icon: 'fa-layer-group' },
@@ -457,6 +441,7 @@
                 renderWorkflow();
                 renderHistory();
                 initChart();
+                renderDashboard();
                 bindEvents();
             }
 
@@ -532,7 +517,7 @@
                 });
 
                 // 執行選定工具
-                els.btnProcessMock.addEventListener('click', async (e) => {
+                els.btnProcess.addEventListener('click', async (e) => {
                     e.stopPropagation();
                     await executeSelectedTool();
                 });
@@ -567,7 +552,12 @@
                 els.btnCopyResult.addEventListener('click', copyResult);
                 els.btnDownloadResult.addEventListener('click', downloadLastResult);
                 els.btnRunWorkflow.addEventListener('click', runWorkflow);
-                els.btnClearHistory.addEventListener('click', () => { localStorage.removeItem('docflow-history'); renderHistory(); showToast('歷史紀錄已清空', 'success'); });
+                els.btnClearHistory.addEventListener('click', () => {
+                    localStorage.removeItem('docflow-history');
+                    renderHistory();
+                    renderDashboard();
+                    showToast('歷史紀錄已清空', 'success');
+                });
             }
 
             function syncAiPanel(animate = true) {
@@ -692,14 +682,131 @@
 
             function addHistory(tool, summary) {
                 const history = JSON.parse(localStorage.getItem('docflow-history') || '[]');
+                const now = new Date();
+                const fileDetails = state.files.map(file => ({ name: file.name, size: file.size, type: file.type }));
+                const riskHits = tool === '合約風險分析'
+                    ? summary.split(/\n+/).filter(line => /^\d+\./.test(line.trim())).length
+                    : 0;
                 history.unshift({
                     tool,
+                    toolId: state.selectedTool,
                     summary: summary.slice(0, 500),
-                    files: state.files.map(file => file.name).join(', ') || '無檔案',
-                    time: new Date().toLocaleString('zh-TW')
+                    files: fileDetails.map(file => file.name).join(', ') || '無檔案',
+                    fileDetails,
+                    fileCount: fileDetails.length,
+                    riskHits,
+                    createdAt: now.toISOString(),
+                    time: now.toLocaleString('zh-TW')
                 });
                 localStorage.setItem('docflow-history', JSON.stringify(history.slice(0, 50)));
                 renderHistory();
+                renderDashboard();
+            }
+
+            function getHistory() {
+                try {
+                    return JSON.parse(localStorage.getItem('docflow-history') || '[]');
+                } catch (error) {
+                    console.warn('歷史紀錄格式無法解析，已使用空資料。', error);
+                    return [];
+                }
+            }
+
+            function renderDashboard() {
+                const history = getHistory();
+                const todayKey = toDateKey(new Date());
+                const aiToolIds = new Set(['pdf2md', 'ocr', 'redact', 'summary', 'diff', 'risk', 'search', 'batch']);
+                const todayItems = history.filter(item => toDateKey(getHistoryDate(item)) === todayKey);
+                const todayFiles = todayItems.reduce((sum, item) => sum + getHistoryFileCount(item), 0);
+                const aiCalls = history.filter(item => aiToolIds.has(item.toolId) || ['PDF 轉 Markdown', 'OCR 文字辨識', '敏感資料去識別化', 'AI 文件摘要', 'AI 差異比對', '合約風險分析', '語意搜尋', '批次處理中心'].includes(item.tool)).length;
+                const riskHits = history.reduce((sum, item) => sum + (Number(item.riskHits) || 0), 0);
+
+                els.statTodayFiles.textContent = String(todayFiles);
+                els.statTodayNote.textContent = todayFiles ? `來自 ${todayItems.length} 筆今日處理紀錄` : '等待實際處理紀錄';
+                els.statAiCalls.textContent = String(aiCalls);
+                els.statRiskHits.textContent = String(riskHits);
+                els.statRiskNote.textContent = riskHits ? `累計 ${history.filter(item => Number(item.riskHits) > 0).length} 筆風險分析命中` : '尚未執行風險分析';
+                els.statLocalStorage.innerHTML = formatStorageUsage(getLocalStorageBytes());
+                renderRecentFiles(history);
+                updateUsageChart(history);
+            }
+
+            function renderRecentFiles(history) {
+                const recentFiles = history
+                    .flatMap(item => getHistoryFiles(item).map(file => ({ ...file, tool: item.tool, time: item.time, createdAt: item.createdAt })))
+                    .slice(0, 5);
+                if (!recentFiles.length) {
+                    els.recentFilesList.innerHTML = '<li class="text-sm text-gray-500 p-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">尚無實際處理文件。</li>';
+                    return;
+                }
+                els.recentFilesList.innerHTML = recentFiles.map(file => `
+                    <li class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors">
+                        <div class="w-8 h-8 rounded ${getFileIconClass(file.name)} flex items-center justify-center text-xs"><i class="fa-solid ${getFileIcon(file.name)}"></i></div>
+                        <div class="flex-1 overflow-hidden">
+                            <div class="text-sm font-medium truncate">${escapeHtml(file.name)}</div>
+                            <div class="text-xs text-gray-500">${escapeHtml(file.time || '剛剛')} • ${escapeHtml(file.tool || '處理完成')}${file.size ? ` • ${formatBytes(file.size)}` : ''}</div>
+                        </div>
+                    </li>`).join('');
+            }
+
+            function getHistoryFiles(item) {
+                if (Array.isArray(item.fileDetails) && item.fileDetails.length) return item.fileDetails;
+                if (!item.files || item.files === '無檔案') return [];
+                return item.files.split(',').map(name => ({ name: name.trim(), size: 0 })).filter(file => file.name);
+            }
+
+            function getHistoryFileCount(item) {
+                if (Number.isFinite(item.fileCount)) return item.fileCount;
+                return getHistoryFiles(item).length;
+            }
+
+            function getHistoryDate(item) {
+                const date = item.createdAt ? new Date(item.createdAt) : new Date(item.time);
+                return Number.isNaN(date.getTime()) ? new Date(0) : date;
+            }
+
+            function toDateKey(date) {
+                return date.toISOString().slice(0, 10);
+            }
+
+            function getLocalStorageBytes() {
+                return Object.keys(localStorage).reduce((total, key) => total + key.length + String(localStorage.getItem(key)).length, 0) * 2;
+            }
+
+            function formatStorageUsage(bytes) {
+                if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(2)}<span class="text-lg">MB</span>`;
+                return `${(bytes / 1024).toFixed(2)}<span class="text-lg">KB</span>`;
+            }
+
+            function getFileIcon(name) {
+                if (/\.pdf$/i.test(name)) return 'fa-file-pdf';
+                if (/\.md$/i.test(name)) return 'fa-file-lines';
+                if (/\.(png|jpe?g|webp|bmp|gif|tiff?)$/i.test(name)) return 'fa-file-image';
+                return 'fa-file-lines';
+            }
+
+            function getFileIconClass(name) {
+                if (/\.pdf$/i.test(name)) return 'bg-red-100 text-red-500';
+                if (/\.md$/i.test(name)) return 'bg-emerald-100 text-emerald-600';
+                if (/\.(png|jpe?g|webp|bmp|gif|tiff?)$/i.test(name)) return 'bg-purple-100 text-purple-500';
+                return 'bg-blue-100 text-blue-500';
+            }
+
+            function updateUsageChart(history) {
+                if (!window.myChart) return;
+                const days = Array.from({ length: 7 }, (_, index) => {
+                    const date = new Date();
+                    date.setDate(date.getDate() - (6 - index));
+                    return date;
+                });
+                window.myChart.data.labels = days.map(date => date.toLocaleDateString('zh-TW', { weekday: 'short' }));
+                window.myChart.data.datasets[0].data = days.map(date => {
+                    const key = toDateKey(date);
+                    return history
+                        .filter(item => toDateKey(getHistoryDate(item)) === key)
+                        .reduce((sum, item) => sum + getHistoryFileCount(item), 0);
+                });
+                window.myChart.update();
             }
 
             function escapeHtml(value) {
@@ -795,7 +902,7 @@
             }
 
             async function runToolForWorkflow(toolId, tool) {
-                const textTools = ['ocr', 'redact', 'summary', 'diff', 'risk', 'search', 'batch'];
+                const textTools = ['pdf2md', 'ocr', 'redact', 'summary', 'diff', 'risk', 'search', 'batch'];
                 if (!textTools.includes(toolId)) return '此步驟會輸出 PDF、圖片或加密檔，為避免中斷批次流程已略過，請在工具矩陣單獨執行。';
                 const text = await buildTextReport(toolId, tool);
                 return text || '已完成。';
@@ -805,19 +912,127 @@
                 if (!file) return '';
                 if (isTextFile(file)) return file.text();
                 if (isPdfFile(file)) {
-                    if (!window.pdfjsLib) throw new Error('PDF.js 尚未載入完成，請檢查網路後重試');
-                    const arrayBuffer = await file.arrayBuffer();
-                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
-                    const chunks = [];
-                    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
-                        const page = await pdf.getPage(pageNo);
-                        const content = await page.getTextContent();
-                        chunks.push(`第 ${pageNo} 頁\n` + content.items.map(item => item.str).join(' '));
-                    }
-                    return chunks.join('\n\n');
+                    const pages = await extractPdfPages(file);
+                    return pages.map(page => `第 ${page.pageNo} 頁\n${page.text}`).join('\n\n');
                 }
                 if (isImageFile(file)) return runOcr(file);
                 return '';
+            }
+
+            async function extractPdfPages(file = state.currentFile) {
+                if (!file) return [];
+                if (!isPdfFile(file)) throw new Error('PDF 轉換功能需要 PDF 檔案');
+                if (!window.pdfjsLib) throw new Error('PDF.js 尚未載入完成，請檢查網路後重試');
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
+                const pages = [];
+                for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
+                    const page = await pdf.getPage(pageNo);
+                    const content = await page.getTextContent();
+                    pages.push({ pageNo, text: buildPdfPageText(content) });
+                }
+                return pages;
+            }
+
+            function buildPdfPageText(content) {
+                const items = content.items
+                    .map(item => createTextItem(item))
+                    .filter(item => item && item.text);
+                if (!items.length) return '';
+
+                const lines = groupTextItemsByLine(items);
+                const medianHeight = median(lines.map(line => line.height).filter(Boolean)) || 10;
+                const output = [];
+
+                lines.forEach((line, index) => {
+                    if (index > 0) {
+                        const previous = lines[index - 1];
+                        const verticalGap = Math.abs(previous.y - line.y);
+                        if (verticalGap > medianHeight * 1.65) output.push('');
+                    }
+                    output.push(joinLineItems(line.items));
+                });
+
+                return output
+                    .map(line => line.trimEnd())
+                    .join('\n')
+                    .replace(/\n{3,}/g, '\n\n')
+                    .trim();
+            }
+
+            function createTextItem(item) {
+                if (!item || typeof item.str !== 'string') return null;
+                const text = normalizePdfTextItem(item.str);
+                if (!text) return null;
+                const [, , , , x, y] = item.transform || [0, 0, 0, 0, 0, 0];
+                const height = Math.abs(item.height || item.transform?.[3] || 0) || 10;
+                return {
+                    text,
+                    x: Number(x) || 0,
+                    y: Number(y) || 0,
+                    width: Math.abs(item.width || 0),
+                    height
+                };
+            }
+
+            function normalizePdfTextItem(text) {
+                return text
+                    .replace(/\s+/g, ' ')
+                    .trim()
+                    .replace(/([\u3400-\u9fff\uf900-\ufaff\u3000-\u303f\uff00-\uffef])\s+(?=[\u3400-\u9fff\uf900-\ufaff\u3000-\u303f\uff00-\uffef\d])/g, '$1')
+                    .replace(/(\d)\s+(?=[\u3400-\u9fff\uf900-\ufaff\u3000-\u303f\uff00-\uffef])/g, '$1');
+            }
+
+            function groupTextItemsByLine(items) {
+                return items
+                    .sort((a, b) => (b.y - a.y) || (a.x - b.x))
+                    .reduce((lines, item) => {
+                        const line = lines.find(candidate => Math.abs(candidate.y - item.y) <= Math.max(candidate.height, item.height) * 0.45);
+                        if (line) {
+                            line.items.push(item);
+                            line.y = (line.y * (line.items.length - 1) + item.y) / line.items.length;
+                            line.height = Math.max(line.height, item.height);
+                        } else {
+                            lines.push({ y: item.y, height: item.height, items: [item] });
+                        }
+                        return lines;
+                    }, [])
+                    .sort((a, b) => b.y - a.y)
+                    .map(line => ({ ...line, items: line.items.sort((a, b) => a.x - b.x) }));
+            }
+
+            function joinLineItems(items) {
+                return items.reduce((line, item, index) => {
+                    const previous = items[index - 1];
+                    return line + (shouldInsertPdfSpace(previous, item) ? ' ' : '') + item.text;
+                }, '').trim();
+            }
+
+            function shouldInsertPdfSpace(previous, current) {
+                if (!previous) return false;
+                const gap = current.x - (previous.x + previous.width);
+                if (gap <= 0) return false;
+                const previousWidth = previous.width / Math.max(previous.text.length, 1);
+                const currentWidth = current.width / Math.max(current.text.length, 1);
+                const averageCharWidth = Math.max(1, previousWidth || currentWidth || previous.height * 0.5);
+                const previousText = previous.text;
+                const currentText = current.text;
+
+                if (/^[,.;:!?，。！？、；：）】》」』]/.test(currentText)) return false;
+                if (/[（(【《「『]$/.test(previousText)) return false;
+                if (isLatinText(previousText.slice(-1)) && isLatinText(currentText.charAt(0))) return gap > averageCharWidth * 0.35;
+                return false;
+            }
+
+            function isLatinText(char) {
+                return /[A-Za-z0-9]/.test(char || '');
+            }
+
+            function median(values) {
+                if (!values.length) return 0;
+                const sorted = [...values].sort((a, b) => a - b);
+                const middle = Math.floor(sorted.length / 2);
+                return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
             }
 
             async function runOcr(file = state.currentFile) {
@@ -919,6 +1134,34 @@
                 setResult(tool.name, `已將第 ${pageNo} 頁輸出為 PNG 圖片。`, blob, `${file.name.replace(/\.pdf$/i, '')}-page-${pageNo}.png`);
             }
 
+            async function pdfToMarkdown(tool) {
+                const [file] = requirePdfFiles();
+                const pages = await extractPdfPages(file);
+                const baseName = file.name.replace(/\.pdf$/i, '');
+                const markdown = [
+                    `# ${baseName}`,
+                    '',
+                    `> 由 DocFlow AI Suite 在瀏覽器本機從 PDF 擷取文字並轉換為 Markdown。`,
+                    ''
+                ];
+                pages.forEach(page => {
+                    markdown.push(`## 第 ${page.pageNo} 頁`, '');
+                    markdown.push(page.text ? normalizeMarkdownText(page.text) : '_此頁未擷取到文字。_', '');
+                });
+                const text = markdown.join('\n').trim() + '\n';
+                const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+                setResult(tool.name, text, blob, `${baseName}.md`);
+            }
+
+            function normalizeMarkdownText(text) {
+                return text
+                    .split('\n')
+                    .map(line => line.trimEnd())
+                    .join('\n')
+                    .replace(/\n{3,}/g, '\n\n')
+                    .trim();
+            }
+
             async function protectFile(tool) {
                 const password = prompt('輸入密碼：若上傳 .dfenc 會解密；其他檔案會加密封裝。');
                 if (!password) throw new Error('已取消加密/解密');
@@ -1017,6 +1260,11 @@
             }
 
             async function buildTextReport(toolId, tool) {
+                if (toolId === 'pdf2md') {
+                    if (!isPdfFile(state.currentFile)) throw new Error('PDF 轉 Markdown 需要 PDF 檔案');
+                    const pages = await extractPdfPages(state.currentFile);
+                    return pages.map(page => `## 第 ${page.pageNo} 頁\n\n${page.text ? normalizeMarkdownText(page.text) : '_此頁未擷取到文字。_'}`).join('\n\n');
+                }
                 const text = await extractText();
                 if (toolId === 'ocr') return text || 'OCR 未辨識到文字。';
                 if (toolId === 'redact') return redactText(text);
@@ -1066,6 +1314,7 @@
                 split: splitPdf,
                 compress: resavePdf,
                 pdf2img: pdfToImage,
+                pdf2md: pdfToMarkdown,
                 protect: protectFile,
                 watermark: watermarkPdf,
                 organize: organizePdf,
@@ -1220,10 +1469,14 @@
                 window.myChart = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: ['週一', '週二', '週三', '週四', '週五', '週六', '週日'],
+                        labels: Array.from({ length: 7 }, (_, index) => {
+                            const date = new Date();
+                            date.setDate(date.getDate() - (6 - index));
+                            return date.toLocaleDateString('zh-TW', { weekday: 'short' });
+                        }),
                         datasets: [{
                             label: '處理文件數',
-                            data: [120, 190, 150, 250, 220, 90, 110],
+                            data: Array(7).fill(0),
                             borderColor: '#0ea5e9',
                             backgroundColor: 'rgba(14, 165, 233, 0.1)',
                             borderWidth: 2,
