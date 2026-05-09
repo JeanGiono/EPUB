@@ -2,7 +2,7 @@
 <html lang="zh-TW" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DocFlow AI Suite - 企業級文件處理平台</title>
     
     <!-- 引入字體 -->
@@ -46,7 +46,9 @@
 
     <style>
         /* 全域自訂樣式：玻璃擬態與滾動條美化 */
-        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; touch-action: manipulation; }
+        button, input, textarea { font: inherit; }
+        @supports (height: 100dvh) { .app-viewport { height: 100dvh; } }
         
         /* 隱藏預設滾動條但保留功能 */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -70,17 +72,25 @@
 
         /* 漸層文字 */
         .text-gradient { background: linear-gradient(to right, #0ea5e9, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        /* Galaxy S24 Ultra / small-screen adaptive layout without renaming existing IDs or tools */
+        @media (max-width: 640px) {
+            .nav-btn { width: auto; min-width: max-content; flex: 0 0 auto; justify-content: center; }
+            #toast-container { left: max(0.75rem, env(safe-area-inset-left)); right: max(0.75rem, env(safe-area-inset-right)); bottom: max(0.75rem, env(safe-area-inset-bottom)); }
+            #toast-container > div { width: 100%; min-width: 0; }
+            #ai-sidebar { width: min(100vw, 30rem); max-width: 100vw; }
+        }
     </style>
 </head>
-<body class="bg-surface-light dark:bg-surface-dark text-gray-800 dark:text-gray-200 transition-colors duration-300 h-screen w-screen overflow-hidden flex">
+<body class="app-viewport bg-surface-light dark:bg-surface-dark text-gray-800 dark:text-gray-200 transition-colors duration-300 h-screen w-screen overflow-hidden flex flex-col sm:flex-row">
 
     <!-- Toast 通知容器 -->
-    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2"></div>
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- 左側 Sidebar -->
-    <aside class="w-64 flex-shrink-0 border-r border-surface-lightBorder dark:border-surface-darkBorder bg-gray-50 dark:bg-[#111111] flex flex-col transition-all duration-300">
+    <aside class="w-full sm:w-64 flex-shrink-0 border-b sm:border-b-0 sm:border-r border-surface-lightBorder dark:border-surface-darkBorder bg-gray-50 dark:bg-[#111111] flex flex-col transition-all duration-300 max-h-[38dvh] sm:max-h-none">
         <!-- Logo 區塊 -->
-        <div class="h-16 flex items-center px-6 border-b border-surface-lightBorder dark:border-surface-darkBorder">
+        <div class="h-14 sm:h-16 flex items-center px-4 sm:px-6 border-b border-surface-lightBorder dark:border-surface-darkBorder">
             <div class="flex items-center gap-2">
                 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
                     <i class="fa-solid fa-layer-group"></i>
@@ -90,23 +100,23 @@
         </div>
 
         <!-- 導航選單 -->
-        <nav class="flex-1 overflow-y-auto custom-scrollbar py-4 px-3 space-y-1" id="main-nav">
-            <button data-target="dashboard" class="nav-btn w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium bg-gray-200 dark:bg-white/10 text-gray-900 dark:text-white transition-colors">
+        <nav class="flex sm:flex-1 overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto custom-scrollbar py-2 sm:py-4 px-2 sm:px-3 gap-1 sm:space-y-1" id="main-nav">
+            <button data-target="dashboard" class="nav-btn w-full flex items-center gap-2 sm:gap-3 px-3 py-2 rounded-md text-sm font-medium bg-gray-200 dark:bg-white/10 text-gray-900 dark:text-white transition-colors">
                 <i class="fa-solid fa-chart-pie w-5 text-center text-gray-500 dark:text-gray-400"></i>儀表板
             </button>
-            <button data-target="workspace" class="nav-btn w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
+            <button data-target="workspace" class="nav-btn w-full flex items-center gap-2 sm:gap-3 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
                 <i class="fa-solid fa-border-all w-5 text-center text-gray-500 dark:text-gray-400"></i>工具矩陣
             </button>
-            <button data-target="workflow" class="nav-btn w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
+            <button data-target="workflow" class="nav-btn w-full flex items-center gap-2 sm:gap-3 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
                 <i class="fa-solid fa-diagram-project w-5 text-center text-gray-500 dark:text-gray-400"></i>工作流程 Builder
             </button>
-            <button data-target="history" class="nav-btn w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
+            <button data-target="history" class="nav-btn w-full flex items-center gap-2 sm:gap-3 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
                 <i class="fa-solid fa-clock-rotate-left w-5 text-center text-gray-500 dark:text-gray-400"></i>歷史紀錄
             </button>
         </nav>
 
         <!-- 系統狀態與設定 -->
-        <div class="p-4 border-t border-surface-lightBorder dark:border-surface-darkBorder">
+        <div class="hidden sm:block p-4 border-t border-surface-lightBorder dark:border-surface-darkBorder">
             <div class="mb-4">
                 <div class="flex justify-between text-xs mb-1 text-gray-500">
                     <span>本機記憶體用量</span>
@@ -123,12 +133,12 @@
     </aside>
 
     <!-- 中央主要內容區 -->
-    <main class="flex-1 flex flex-col relative min-w-0">
+    <main class="flex-1 flex flex-col relative min-w-0 min-h-0">
         <!-- 上方 Toolbar -->
-        <header class="h-16 flex items-center justify-between px-6 border-b border-surface-lightBorder dark:border-surface-darkBorder bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-10 sticky top-0">
+        <header class="h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6 border-b border-surface-lightBorder dark:border-surface-darkBorder bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md z-10 sticky top-0">
             <!-- 麵包屑/搜尋 -->
             <div class="flex items-center flex-1 gap-4">
-                <div class="relative w-64">
+                <div class="relative w-full sm:w-64">
                     <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
                     <input type="text" placeholder="搜尋工具、文件..." class="w-full bg-gray-100 dark:bg-gray-800 border border-transparent focus:border-brand-500 rounded-md py-1.5 pl-9 pr-3 text-sm focus:outline-none transition-colors">
                 </div>
@@ -136,12 +146,12 @@
             </div>
 
             <!-- 右側操作 -->
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 sm:gap-4">
                 <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500">
                     <i class="fa-solid fa-moon dark:hidden"></i>
                     <i class="fa-solid fa-sun hidden dark:block text-yellow-400"></i>
                 </button>
-                <button id="toggle-ai" class="flex items-center gap-2 bg-gradient-to-r from-brand-500 to-purple-600 hover:opacity-90 text-white px-4 py-1.5 rounded-full text-sm font-medium shadow-lg shadow-brand-500/20 transition-all">
+                <button id="toggle-ai" class="flex items-center gap-2 bg-gradient-to-r from-brand-500 to-purple-600 hover:opacity-90 text-white px-3 sm:px-4 py-1.5 rounded-full text-sm font-medium shadow-lg shadow-brand-500/20 transition-all">
                     <i class="fa-solid fa-wand-magic-sparkles"></i> AI 助理
                 </button>
                 <div class="w-8 h-8 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 border-2 border-white dark:border-gray-800 cursor-pointer"></div>
@@ -149,7 +159,7 @@
         </header>
 
         <!-- 動態視圖容器 -->
-        <div id="view-container" class="flex-1 overflow-y-auto custom-scrollbar p-6 bg-[#fafafa] dark:bg-transparent relative">
+        <div id="view-container" class="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6 bg-[#fafafa] dark:bg-transparent relative">
             
             <!-- 視圖 1: Dashboard (預設顯示) -->
             <div id="view-dashboard" class="view-panel animate-fade-in max-w-7xl mx-auto space-y-6">
@@ -221,7 +231,7 @@
             <!-- 視圖 2: 工具矩陣 (Workspace) -->
             <div id="view-workspace" class="view-panel hidden animate-fade-in space-y-8 max-w-7xl mx-auto">
                 <!-- 拖曳上傳區 / 互動預覽區 -->
-                <div id="drop-zone" class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-10 flex flex-col items-center justify-center text-center transition-all bg-white dark:bg-[#111111] hover:border-brand-500 relative overflow-hidden group cursor-pointer min-h-[250px]">
+                <div id="drop-zone" class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-4 sm:p-10 flex flex-col items-center justify-center text-center transition-all bg-white dark:bg-[#111111] hover:border-brand-500 relative overflow-hidden group cursor-pointer min-h-[250px]">
                     <input type="file" id="file-input" class="hidden" accept=".pdf,.txt,image/*,.dfenc" multiple>
                     <div id="upload-prompt" class="space-y-4">
                         <div class="w-16 h-16 mx-auto bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -235,17 +245,17 @@
                     
                     <!-- 預覽畫布 (隱藏直到上傳) -->
                     <div id="preview-container" class="hidden w-full h-full flex flex-col items-center justify-center">
-                        <div class="flex items-center justify-between w-full mb-4 px-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full mb-4 px-1 sm:px-4">
                             <div class="flex items-center gap-2">
                                 <span id="file-name-display" class="font-medium text-sm">document.pdf</span>
                                 <span id="security-badge" class="px-2 py-0.5 text-[10px] bg-green-100 text-green-700 rounded border border-green-200"><i class="fa-solid fa-shield-check"></i> 安全沙箱</span>
                             </div>
-                            <div class="flex gap-2">
-                                <button id="btn-process-mock" class="text-xs bg-brand-500 hover:bg-brand-600 text-white px-3 py-1.5 rounded transition">執行選定工具</button>
-                                <button id="btn-clear-file" class="text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded transition">清除</button>
+                            <div class="flex gap-2 w-full sm:w-auto">
+                                <button id="btn-process-mock" class="flex-1 sm:flex-none text-xs bg-brand-500 hover:bg-brand-600 text-white px-3 py-1.5 rounded transition">執行選定工具</button>
+                                <button id="btn-clear-file" class="flex-1 sm:flex-none text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded transition">清除</button>
                             </div>
                         </div>
-                        <div class="relative w-full max-w-lg bg-gray-100 dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-800 overflow-hidden shadow-inner flex items-center justify-center h-64">
+                        <div class="relative w-full max-w-lg min-h-48 bg-gray-100 dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-800 overflow-hidden shadow-inner flex items-center justify-center h-64">
                             <canvas id="pdf-canvas" class="max-h-full max-w-full shadow-md"></canvas>
                             <div id="loading-spinner" class="absolute inset-0 bg-white/50 dark:bg-black/50 backdrop-blur-sm flex items-center justify-center hidden">
                                 <i class="fa-solid fa-circle-notch fa-spin text-3xl text-brand-500"></i>
@@ -258,14 +268,14 @@
                 <div id="tools-grid-container"></div>
 
                 <section id="result-panel" class="hidden bg-white dark:bg-[#111111] border border-surface-lightBorder dark:border-surface-darkBorder rounded-2xl p-5 shadow-sm">
-                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                         <div>
                             <h2 class="text-lg font-semibold flex items-center gap-2"><i class="fa-solid fa-square-poll-horizontal text-brand-500"></i>處理結果</h2>
                             <p id="result-meta" class="text-xs text-gray-500 mt-1">尚未執行工具</p>
                         </div>
-                        <div class="flex gap-2">
-                            <button id="btn-copy-result" class="text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded transition"><i class="fa-regular fa-copy mr-1"></i>複製文字</button>
-                            <button id="btn-download-result" class="text-xs bg-brand-500 hover:bg-brand-600 text-white px-3 py-1.5 rounded transition"><i class="fa-solid fa-download mr-1"></i>下載結果</button>
+                        <div class="flex gap-2 w-full sm:w-auto">
+                            <button id="btn-copy-result" class="flex-1 sm:flex-none text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded transition"><i class="fa-regular fa-copy mr-1"></i>複製文字</button>
+                            <button id="btn-download-result" class="flex-1 sm:flex-none text-xs bg-brand-500 hover:bg-brand-600 text-white px-3 py-1.5 rounded transition"><i class="fa-solid fa-download mr-1"></i>下載結果</button>
                         </div>
                     </div>
                     <pre id="result-output" class="whitespace-pre-wrap text-sm bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl p-4 max-h-96 overflow-auto custom-scrollbar"></pre>
@@ -298,7 +308,7 @@
     </main>
 
     <!-- 右側 AI 助理與任務面板 (可收合) -->
-    <aside id="ai-sidebar" class="w-80 flex-shrink-0 border-l border-surface-lightBorder dark:border-surface-darkBorder bg-white dark:bg-[#111111] flex flex-col transition-all duration-300 transform translate-x-0 absolute right-0 top-0 bottom-0 z-20 shadow-2xl sm:relative sm:translate-x-0 hidden sm:flex">
+    <aside id="ai-sidebar" class="w-full sm:w-80 flex-shrink-0 border-l border-surface-lightBorder dark:border-surface-darkBorder bg-white dark:bg-[#111111] flex flex-col transition-all duration-300 transform translate-x-full fixed sm:absolute right-0 top-0 bottom-0 z-20 shadow-2xl hidden">
         
         <!-- Tabs -->
         <div class="flex border-b border-surface-lightBorder dark:border-surface-darkBorder p-2 gap-1 bg-gray-50 dark:bg-[#0a0a0a]">
@@ -435,8 +445,13 @@
 
             function init() {
                 // 設定 PDF.js worker
-                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                
+                if (window.pdfjsLib) {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                } else {
+                    showToast('PDF.js 尚未載入，PDF 預覽與文字擷取會暫停', 'warning');
+                }
+
+                syncAiPanel();
                 applyTheme();
                 renderTools();
                 renderWorkflow();
@@ -475,18 +490,18 @@
                 });
 
                 // AI 面板切換
-                const toggleAi = () => {
+                els.toggleAiBtn.addEventListener('click', () => {
                     state.isAiPanelOpen = !state.isAiPanelOpen;
-                    if(state.isAiPanelOpen) {
-                        els.aiSidebar.classList.remove('hidden');
-                        setTimeout(() => els.aiSidebar.classList.remove('translate-x-full'), 10);
-                    } else {
-                        els.aiSidebar.classList.add('translate-x-full');
-                        setTimeout(() => els.aiSidebar.classList.add('hidden'), 300);
-                    }
-                };
-                els.toggleAiBtn.addEventListener('click', toggleAi);
-                if(els.closeAiBtn) els.closeAiBtn.addEventListener('click', toggleAi);
+                    syncAiPanel();
+                });
+                if(els.closeAiBtn) els.closeAiBtn.addEventListener('click', () => {
+                    state.isAiPanelOpen = false;
+                    syncAiPanel();
+                });
+                window.addEventListener('resize', () => {
+                    if (window.innerWidth >= 640 && !state.isAiPanelOpen) return;
+                    syncAiPanel(false);
+                });
 
                 // 拖曳上傳
                 els.dropZone.addEventListener('dragover', (e) => { e.preventDefault(); els.dropZone.classList.add('drag-active'); });
@@ -553,6 +568,15 @@
                 els.btnDownloadResult.addEventListener('click', downloadLastResult);
                 els.btnRunWorkflow.addEventListener('click', runWorkflow);
                 els.btnClearHistory.addEventListener('click', () => { localStorage.removeItem('docflow-history'); renderHistory(); showToast('歷史紀錄已清空', 'success'); });
+            }
+
+            function syncAiPanel(animate = true) {
+                if (!animate) els.aiSidebar.classList.add('duration-0');
+                els.aiSidebar.classList.toggle('hidden', !state.isAiPanelOpen);
+                els.aiSidebar.classList.toggle('translate-x-full', !state.isAiPanelOpen);
+                els.aiSidebar.classList.toggle('translate-x-0', state.isAiPanelOpen);
+                els.toggleAiBtn.setAttribute('aria-expanded', String(state.isAiPanelOpen));
+                if (!animate) requestAnimationFrame(() => els.aiSidebar.classList.remove('duration-0'));
             }
 
             // --- 主題切換邏輯 ---
@@ -636,7 +660,7 @@
             }
 
             function renderWorkflow() {
-                const defaults = ['ocr', 'summary', 'risk', 'watermark'];
+                const defaults = ['ocr', 'summary', 'risk'];
                 els.workflowSteps.innerHTML = allTools()
                     .filter(tool => !['history', 'workflow'].includes(tool.id))
                     .map(tool => `
@@ -688,14 +712,33 @@
                 els.resultMeta.textContent = title;
                 els.resultOutput.textContent = text;
                 addHistory(title, text);
-                if (!state.isAiPanelOpen) document.getElementById('toggle-ai').click();
+                if (!state.isAiPanelOpen && window.innerWidth >= 640) {
+                    state.isAiPanelOpen = true;
+                    syncAiPanel();
+                }
                 simulateAiResponse(`「${title}」已完成。結果已顯示於工具矩陣的處理結果區，也可直接下載。`);
             }
 
             async function copyResult() {
                 if (!state.lastResult) return showToast('目前沒有可複製的結果', 'warning');
-                await navigator.clipboard.writeText(state.lastResult.text);
-                showToast('結果文字已複製', 'success');
+                try {
+                    if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(state.lastResult.text);
+                    } else {
+                        const textarea = document.createElement('textarea');
+                        textarea.value = state.lastResult.text;
+                        textarea.style.position = 'fixed';
+                        textarea.style.opacity = '0';
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        textarea.remove();
+                    }
+                    showToast('結果文字已複製', 'success');
+                } catch (error) {
+                    console.error(error);
+                    showToast('複製失敗，請手動選取結果文字', 'error');
+                }
             }
 
             function downloadLastResult() {
@@ -752,15 +795,17 @@
             }
 
             async function runToolForWorkflow(toolId, tool) {
-                if (['merge', 'split', 'pdf2img', 'protect'].includes(toolId)) return '此步驟會產生個別下載檔，已略過自動串接。';
+                const textTools = ['ocr', 'redact', 'summary', 'diff', 'risk', 'search', 'batch'];
+                if (!textTools.includes(toolId)) return '此步驟會輸出 PDF、圖片或加密檔，為避免中斷批次流程已略過，請在工具矩陣單獨執行。';
                 const text = await buildTextReport(toolId, tool);
                 return text || '已完成。';
             }
 
             async function extractText(file = state.currentFile) {
                 if (!file) return '';
-                if (file.type === 'text/plain') return file.text();
-                if (file.type === 'application/pdf') {
+                if (isTextFile(file)) return file.text();
+                if (isPdfFile(file)) {
+                    if (!window.pdfjsLib) throw new Error('PDF.js 尚未載入完成，請檢查網路後重試');
                     const arrayBuffer = await file.arrayBuffer();
                     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
                     const chunks = [];
@@ -771,7 +816,7 @@
                     }
                     return chunks.join('\n\n');
                 }
-                if (file.type.startsWith('image/')) return runOcr(file);
+                if (isImageFile(file)) return runOcr(file);
                 return '';
             }
 
@@ -785,13 +830,26 @@
                 return result.data.text.trim();
             }
 
+            function isPdfFile(file) {
+                return file && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name));
+            }
+
+            function isTextFile(file) {
+                return file && (file.type === 'text/plain' || /\.txt$/i.test(file.name));
+            }
+
+            function isImageFile(file) {
+                return file && (file.type.startsWith('image/') || /\.(png|jpe?g|webp|bmp|gif|tiff?)$/i.test(file.name));
+            }
+
             function requirePdfFiles() {
-                const pdfs = state.files.filter(file => file.type === 'application/pdf');
+                const pdfs = state.files.filter(isPdfFile);
                 if (!pdfs.length) throw new Error('此功能需要 PDF 檔案');
                 return pdfs;
             }
 
             async function loadPdfLibDocument(file) {
+                if (!window.PDFLib) throw new Error('PDF-Lib 尚未載入完成，請檢查網路後重試');
                 return PDFLib.PDFDocument.load(await file.arrayBuffer(), { ignoreEncryption: true });
             }
 
@@ -830,7 +888,9 @@
                     const [start, end = start] = part.split('-').map(num => parseInt(num, 10));
                     for (let page = Math.max(1, start); page <= Math.min(total, end); page++) selected.add(page - 1);
                 });
-                return Array.from(selected).sort((a, b) => a - b);
+                const pages = Array.from(selected).sort((a, b) => a - b);
+                if (!pages.length) throw new Error('頁碼範圍無效，請重新輸入');
+                return pages;
             }
 
             async function resavePdf(tool) {
@@ -846,6 +906,7 @@
 
             async function pdfToImage(tool) {
                 const [file] = requirePdfFiles();
+                if (!window.pdfjsLib) throw new Error('PDF.js 尚未載入完成，請檢查網路後重試');
                 const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
                 const pageNo = Math.min(pdf.numPages, Math.max(1, parseInt(prompt(`輸入要轉成圖片的頁碼 (1-${pdf.numPages})：`, '1'), 10) || 1));
                 const page = await pdf.getPage(pageNo);
@@ -991,7 +1052,7 @@
             function formatBytes(bytes) {
                 if (!bytes) return '0 B';
                 const units = ['B', 'KB', 'MB', 'GB'];
-                const index = Math.floor(Math.log(bytes) / Math.log(1024));
+                const index = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
                 return `${(bytes / Math.pow(1024, index)).toFixed(2)} ${units[index]}`;
             }
 
@@ -1029,7 +1090,8 @@
                 els.loadingSpinner.classList.remove('hidden');
                 
                 try {
-                    if (file.type === 'application/pdf') {
+                    if (isPdfFile(file)) {
+                        if (!window.pdfjsLib) throw new Error('PDF.js 尚未載入完成，請檢查網路後重試');
                         // 使用 PDF.js 渲染預覽
                         const arrayBuffer = await file.arrayBuffer();
                         const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
@@ -1055,7 +1117,7 @@
                         await page.render(renderContext).promise;
                         
                         showToast(`已成功載入 PDF，共 ${pdf.numPages} 頁`, 'success');
-                    } else if (file.type.startsWith('image/')) {
+                    } else if (isImageFile(file)) {
                         // 圖片預覽
                         const reader = new FileReader();
                         reader.onload = (e) => {
@@ -1075,7 +1137,7 @@
                         reader.readAsDataURL(file);
                         showToast('圖片已載入，可執行 OCR 分析', 'success');
                     } else {
-                        showToast('目前僅支援預覽 PDF 與圖片格式', 'warning');
+                        showToast(isTextFile(file) ? 'TXT 已載入，可執行摘要、搜尋與去識別化' : '目前僅支援預覽 PDF 與圖片格式', isTextFile(file) ? 'success' : 'warning');
                         els.pdfCanvas.width = 0; els.pdfCanvas.height = 0;
                     }
                 } catch (error) {
@@ -1148,6 +1210,10 @@
 
             // --- Dashboard 圖表初始化 (Chart.js) ---
             function initChart() {
+                if (!window.Chart) {
+                    showToast('Chart.js 尚未載入，已略過儀表板圖表', 'warning');
+                    return;
+                }
                 const ctx = document.getElementById('usageChart').getContext('2d');
                 const gridColor = state.theme === 'dark' ? '#27272a' : '#e4e4e7';
                 
