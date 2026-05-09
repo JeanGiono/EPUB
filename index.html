@@ -954,14 +954,80 @@
                 for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
                     const page = await pdf.getPage(pageNo);
                     const content = await page.getTextContent();
-                    const text = content.items
-                        .map(item => item.str)
-                        .join(' ')
-                        .replace(/\s+/g, ' ')
-                        .trim();
-                    pages.push({ pageNo, text });
+                    pages.push({ pageNo, text: buildPdfPageText(content.items, page.getViewport({ scale: 1 })) });
                 }
                 return pages;
+            }
+
+            function buildPdfPageText(items, viewport) {
+                const positionedItems = items
+                    .map(item => {
+                        const normalized = normalizePdfTextItem(item.str);
+                        if (!normalized) return null;
+                        const transform = window.pdfjsLib?.Util
+                            ? pdfjsLib.Util.transform(viewport.transform, item.transform)
+                            : item.transform;
+                        const x = transform[4];
+                        const y = transform[5];
+                        const height = Math.max(Math.hypot(transform[2], transform[3]), item.height || 0, 1);
+                        const width = Math.max(Math.abs(item.width || 0), normalized.length * height * 0.35);
+                        return { str: normalized, x, y, width, height };
+                    })
+                    .filter(Boolean)
+                    .sort((a, b) => Math.abs(a.y - b.y) > Math.max(a.height, b.height) * 0.5 ? a.y - b.y : a.x - b.x);
+
+                const lines = [];
+                positionedItems.forEach(item => {
+                    const line = lines.find(existing => Math.abs(existing.y - item.y) <= Math.max(existing.height, item.height) * 0.55);
+                    if (line) {
+                        line.items.push(item);
+                        line.y = (line.y * (line.items.length - 1) + item.y) / line.items.length;
+                        line.height = Math.max(line.height, item.height);
+                    } else {
+                        lines.push({ y: item.y, height: item.height, items: [item] });
+                    }
+                });
+
+                return lines
+                    .sort((a, b) => a.y - b.y)
+                    .map((line, index, sortedLines) => {
+                        const sortedItems = line.items.sort((a, b) => a.x - b.x);
+                        const text = sortedItems
+                            .reduce((lineText, item, itemIndex) => appendPdfTextItem(lineText, item, sortedItems[itemIndex - 1]), '')
+                            .trim();
+                        if (!text) return '';
+                        if (index === 0) return text;
+                        const previous = sortedLines[index - 1];
+                        const gap = line.y - previous.y;
+                        const paragraphBreak = gap > Math.max(line.height, previous.height) * 1.75;
+                        return `${paragraphBreak ? '\n\n' : '\n'}${text}`;
+                    })
+                    .join('')
+                    .trim();
+            }
+
+            function normalizePdfTextItem(text) {
+                return (text || '')
+                    .replace(/[\u00a0\u3000]/g, ' ')
+                    .replace(/([\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}])\s+(?=[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}0-9])/gu, '$1')
+                    .replace(/([0-9])\s+(?=[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}0-9])/gu, '$1')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            }
+
+            function appendPdfTextItem(lineText, item, previousItem) {
+                if (!lineText) return item.str;
+                if (!item.str) return lineText;
+                return `${lineText}${shouldInsertPdfWordSpace(previousItem, item) ? ' ' : ''}${item.str}`;
+            }
+
+            function shouldInsertPdfWordSpace(leftItem, rightItem) {
+                if (!leftItem || !rightItem) return false;
+                const left = leftItem.str.slice(-1);
+                const right = rightItem.str.charAt(0);
+                const gap = rightItem.x - (leftItem.x + leftItem.width);
+                const minWordGap = Math.max(leftItem.height, rightItem.height) * 0.2;
+                return gap > minWordGap && /[A-Za-z0-9]/.test(left) && /[A-Za-z0-9]/.test(right);
             }
 
             async function runOcr(file = state.currentFile) {
@@ -1084,8 +1150,8 @@
 
             function normalizeMarkdownText(text) {
                 return text
-                    .replace(/\s*([。！？.!?])\s+/g, '$1\n\n')
-                    .replace(/\n{3,}/g, '\n\n')
+                    .replace(/[ \t]+$/gm, '')
+                    .replace(/\n{4,}/g, '\n\n')
                     .trim();
             }
 
@@ -1189,12 +1255,12 @@
             }
 
             async function buildTextReport(toolId, tool) {
-                const text = await extractText();
                 if (toolId === 'pdf2md') {
                     if (!isPdfFile(state.currentFile)) throw new Error('PDF 轉 Markdown 需要 PDF 檔案');
                     const pages = await extractPdfPages(state.currentFile);
                     return pages.map(page => `## 第 ${page.pageNo} 頁\n\n${page.text ? normalizeMarkdownText(page.text) : '_此頁未擷取到文字。_'}`).join('\n\n');
                 }
+                const text = await extractText();
                 if (toolId === 'ocr') return text || 'OCR 未辨識到文字。';
                 if (toolId === 'redact') return redactText(text);
                 if (toolId === 'summary') return summarize(text);
