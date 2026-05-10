@@ -1239,9 +1239,50 @@
                     });
                 }
 
-                const blob = await pptx.write({ outputType: 'blob' });
+                const blob = await createPptxBlob(pptx);
                 const baseName = file.name.replace(/\.pdf$/i, '');
                 setResult(tool.name, `已將 ${pdf.numPages} 頁 PDF 轉為 PowerPoint，可在簡報軟體中編輯 ${textBoxCount} 個文字框。\n注意：掃描型 PDF 若沒有文字層，請先使用 OCR 文字辨識。`, blob, `${baseName}-editable.pptx`);
+            }
+
+            async function createPptxBlob(pptx) {
+                const mimeType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+                const output = await pptx.write({ outputType: 'arraybuffer' });
+                let arrayBuffer;
+
+                if (output instanceof ArrayBuffer) {
+                    arrayBuffer = output;
+                } else if (ArrayBuffer.isView(output)) {
+                    arrayBuffer = output.buffer.slice(output.byteOffset, output.byteOffset + output.byteLength);
+                } else if (output instanceof Blob) {
+                    arrayBuffer = await output.arrayBuffer();
+                } else if (typeof output === 'string') {
+                    arrayBuffer = pptxStringToArrayBuffer(output);
+                } else {
+                    throw new Error('PowerPoint 輸出格式無法辨識，請重新轉換');
+                }
+
+                if (!hasZipSignature(arrayBuffer)) {
+                    throw new Error('PowerPoint 產生失敗：輸出內容不是有效的 .pptx 封裝');
+                }
+
+                return new Blob([arrayBuffer], { type: mimeType });
+            }
+
+            function pptxStringToArrayBuffer(value) {
+                const trimmed = value.trim();
+                const binary = /^[A-Za-z0-9+/=\r\n]+$/.test(trimmed) && trimmed.length % 4 === 0
+                    ? atob(trimmed.replace(/\s/g, ''))
+                    : value;
+                const bytes = new Uint8Array(binary.length);
+                for (let index = 0; index < binary.length; index++) {
+                    bytes[index] = binary.charCodeAt(index) & 0xff;
+                }
+                return bytes.buffer;
+            }
+
+            function hasZipSignature(arrayBuffer) {
+                const bytes = new Uint8Array(arrayBuffer, 0, Math.min(4, arrayBuffer.byteLength));
+                return bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b && [0x03, 0x05, 0x07].includes(bytes[2]) && [0x04, 0x06, 0x08].includes(bytes[3]);
             }
 
             function guessPptFont(text) {
