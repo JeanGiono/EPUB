@@ -40,6 +40,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -398,6 +399,7 @@
                         { id: 'compress', name: 'PDF 壓縮', desc: '最佳化檔案大小以便傳輸', icon: 'fa-compress' },
                         { id: 'pdf2img', name: 'PDF 轉圖片', desc: '將頁面轉為 JPG/PNG', icon: 'fa-image' },
                         { id: 'pdf2md', name: 'PDF 轉 Markdown', desc: '擷取 PDF 文字並輸出 .md 結構化文件', icon: 'fa-file-lines' },
+                        { id: 'pdf2pptx', name: 'PDF 轉可編輯 PPT', desc: '逐頁轉為可編輯文字框 PowerPoint', icon: 'fa-file-powerpoint' },
                         { id: 'protect', name: 'PDF 加密/解密', desc: '設定或解除密碼與權限', icon: 'fa-lock' },
                         { id: 'watermark', name: '加浮水印', desc: '批次添加文字或圖片浮水印', icon: 'fa-stamp' },
                         { id: 'organize', name: '頁面管理', desc: '拖曳重新排序、刪除、旋轉', icon: 'fa-layer-group' },
@@ -806,6 +808,7 @@
             function getFileIcon(name) {
                 if (/\.pdf$/i.test(name)) return 'fa-file-pdf';
                 if (/\.md$/i.test(name)) return 'fa-file-lines';
+                if (/\.pptx?$/i.test(name)) return 'fa-file-powerpoint';
                 if (/\.(png|jpe?g|webp|bmp|gif|tiff?)$/i.test(name)) return 'fa-file-image';
                 return 'fa-file-lines';
             }
@@ -813,6 +816,7 @@
             function getFileIconClass(name) {
                 if (/\.pdf$/i.test(name)) return 'bg-red-100 text-red-500';
                 if (/\.md$/i.test(name)) return 'bg-emerald-100 text-emerald-600';
+                if (/\.pptx?$/i.test(name)) return 'bg-orange-100 text-orange-600';
                 if (/\.(png|jpe?g|webp|bmp|gif|tiff?)$/i.test(name)) return 'bg-purple-100 text-purple-500';
                 return 'bg-blue-100 text-blue-500';
             }
@@ -1155,6 +1159,95 @@
                     .trim();
             }
 
+            async function pdfToEditablePpt(tool) {
+                const [file] = requirePdfFiles();
+                if (!window.pdfjsLib) throw new Error('PDF.js 尚未載入完成，請檢查網路後重試');
+                const PptxConstructor = window.PptxGenJS || window.pptxgen;
+                if (!PptxConstructor) throw new Error('PptxGenJS 尚未載入完成，請檢查網路後重試');
+
+                const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+                const pptx = new PptxConstructor();
+                pptx.layout = 'LAYOUT_WIDE';
+                pptx.author = 'DocFlow AI Suite';
+                pptx.subject = 'PDF 轉可編輯 PPT';
+                pptx.title = file.name.replace(/\.pdf$/i, '');
+                pptx.company = 'DocFlow AI Suite';
+                pptx.lang = 'zh-TW';
+
+                const slideWidth = 13.333;
+                const slideHeight = 7.5;
+                let textBoxCount = 0;
+
+                for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
+                    els.resultMeta.textContent = `${tool.name}：正在轉換第 ${pageNo}/${pdf.numPages} 頁`;
+                    const page = await pdf.getPage(pageNo);
+                    const viewport = page.getViewport({ scale: 1 });
+                    const content = await page.getTextContent();
+                    const slide = pptx.addSlide();
+                    slide.background = { color: 'F8FAFC' };
+
+                    const pageScale = Math.min(slideWidth / viewport.width, slideHeight / viewport.height) * 0.94;
+                    const pageWidth = viewport.width * pageScale;
+                    const pageHeight = viewport.height * pageScale;
+                    const offsetX = (slideWidth - pageWidth) / 2;
+                    const offsetY = (slideHeight - pageHeight) / 2;
+                    slide.addShape(pptx.ShapeType.rect, {
+                        x: offsetX,
+                        y: offsetY,
+                        w: pageWidth,
+                        h: pageHeight,
+                        fill: { color: 'FFFFFF' },
+                        line: { color: 'E5E7EB', width: 0.5 }
+                    });
+
+                    content.items.forEach(item => {
+                        const text = normalizePdfTextItem(item.str);
+                        if (!text) return;
+                        const matrix = pdfjsLib.Util.transform(viewport.transform, item.transform);
+                        const x = offsetX + matrix[4] * pageScale;
+                        const y = offsetY + (viewport.height - matrix[5] - Math.max(item.height || 0, 8)) * pageScale;
+                        const fontSize = Math.max(5, Math.min(40, (item.height || 10) * pageScale * 0.78 * 72));
+                        const boxWidth = Math.max(0.12, (item.width || text.length * (item.height || 10) * 0.45) * pageScale);
+                        const boxHeight = Math.max(0.08, (item.height || 10) * pageScale * 1.25);
+                        if (x > slideWidth || y > slideHeight || x + boxWidth < 0 || y + boxHeight < 0) return;
+
+                        slide.addText(text, {
+                            x: Math.max(0, x),
+                            y: Math.max(0, y),
+                            w: Math.min(boxWidth, slideWidth - Math.max(0, x)),
+                            h: Math.min(boxHeight, slideHeight - Math.max(0, y)),
+                            fontFace: guessPptFont(text),
+                            fontSize,
+                            color: '111827',
+                            margin: 0,
+                            breakLine: false,
+                            fit: 'shrink',
+                            valign: 'top'
+                        });
+                        textBoxCount += 1;
+                    });
+
+                    slide.addText(`第 ${pageNo} 頁`, {
+                        x: slideWidth - 1.2,
+                        y: slideHeight - 0.28,
+                        w: 1,
+                        h: 0.18,
+                        fontSize: 7,
+                        color: '94A3B8',
+                        align: 'right',
+                        margin: 0
+                    });
+                }
+
+                const blob = await pptx.write({ outputType: 'blob' });
+                const baseName = file.name.replace(/\.pdf$/i, '');
+                setResult(tool.name, `已將 ${pdf.numPages} 頁 PDF 轉為 PowerPoint，可在簡報軟體中編輯 ${textBoxCount} 個文字框。\n注意：掃描型 PDF 若沒有文字層，請先使用 OCR 文字辨識。`, blob, `${baseName}-editable.pptx`);
+            }
+
+            function guessPptFont(text) {
+                return /[\u3400-\u9fff\uf900-\ufaff]/.test(text) ? 'Microsoft JhengHei' : 'Arial';
+            }
+
             async function protectFile(tool) {
                 const password = prompt('輸入密碼：若上傳 .dfenc 會解密；其他檔案會加密封裝。');
                 if (!password) throw new Error('已取消加密/解密');
@@ -1310,6 +1403,7 @@
                 compress: resavePdf,
                 pdf2img: pdfToImage,
                 pdf2md: pdfToMarkdown,
+                pdf2pptx: pdfToEditablePpt,
                 protect: protectFile,
                 watermark: watermarkPdf,
                 organize: organizePdf,
