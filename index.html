@@ -1182,7 +1182,10 @@
                     els.resultMeta.textContent = `${tool.name}：正在轉換第 ${pageNo}/${pdf.numPages} 頁`;
                     const page = await pdf.getPage(pageNo);
                     const viewport = page.getViewport({ scale: 1 });
-                    const content = await page.getTextContent();
+                    const [content, pageImage] = await Promise.all([
+                        page.getTextContent(),
+                        renderPdfPageImage(page)
+                    ]);
                     const slide = pptx.addSlide();
                     slide.background = { color: 'F8FAFC' };
 
@@ -1191,13 +1194,13 @@
                     const pageHeight = viewport.height * pageScale;
                     const offsetX = (slideWidth - pageWidth) / 2;
                     const offsetY = (slideHeight - pageHeight) / 2;
-                    slide.addShape(pptx.ShapeType.rect, {
+
+                    slide.addImage({
+                        data: pageImage,
                         x: offsetX,
                         y: offsetY,
                         w: pageWidth,
-                        h: pageHeight,
-                        fill: { color: 'FFFFFF' },
-                        line: { color: 'E5E7EB', width: 0.5 }
+                        h: pageHeight
                     });
 
                     content.items.forEach(item => {
@@ -1241,7 +1244,24 @@
 
                 const blob = await createPptxBlob(pptx);
                 const baseName = file.name.replace(/\.pdf$/i, '');
-                setResult(tool.name, `已將 ${pdf.numPages} 頁 PDF 轉為 PowerPoint，可在簡報軟體中編輯 ${textBoxCount} 個文字框。\n注意：掃描型 PDF 若沒有文字層，請先使用 OCR 文字辨識。`, blob, `${baseName}-editable.pptx`);
+                setResult(tool.name, `已將 ${pdf.numPages} 頁 PDF 轉為 PowerPoint，並以原頁面影像保留版面，避免下載後空白；同時可在簡報軟體中編輯 ${textBoxCount} 個文字框。\n注意：掃描型 PDF 若沒有文字層，仍會保留頁面影像；若要產生可編輯文字，請先使用 OCR 文字辨識。`, blob, `${baseName}-editable.pptx`);
+            }
+
+            async function renderPdfPageImage(page) {
+                const baseViewport = page.getViewport({ scale: 1 });
+                const maxSidePixels = 1800;
+                const renderScale = Math.min(2, Math.max(1, maxSidePixels / Math.max(baseViewport.width, baseViewport.height)));
+                const viewport = page.getViewport({ scale: renderScale });
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.ceil(viewport.width);
+                canvas.height = Math.ceil(viewport.height);
+
+                const context = canvas.getContext('2d', { alpha: false });
+                context.fillStyle = '#ffffff';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                await page.render({ canvasContext: context, viewport }).promise;
+
+                return canvas.toDataURL('image/png');
             }
 
             async function createPptxBlob(pptx) {
