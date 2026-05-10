@@ -43,7 +43,6 @@
     <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         /* 全域自訂樣式：玻璃擬態與滾動條美化 */
@@ -190,11 +189,22 @@
                     </div>
                 </div>
 
-                <!-- 圖表與最近檔案 -->
+                <!-- 處理量趨勢與最近檔案 -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div class="lg:col-span-2 bg-white dark:bg-[#111111] p-5 rounded-xl border border-surface-lightBorder dark:border-surface-darkBorder shadow-sm">
-                        <h2 class="font-semibold mb-4 text-sm text-gray-500">處理量趨勢</h2>
-                        <canvas id="usageChart" height="100"></canvas>
+                        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
+                            <div>
+                                <h2 class="font-semibold text-sm text-gray-500">處理量趨勢</h2>
+                                <p class="text-xs text-gray-400 mt-1">近 7 日文件處理量，以數字摘要呈現</p>
+                            </div>
+                            <div class="text-right">
+                                <div id="usage-trend-total" class="text-3xl font-semibold text-brand-500">0</div>
+                                <div class="text-xs text-gray-500">近 7 日總量</div>
+                            </div>
+                        </div>
+                        <div id="usage-trend-list" class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-3" aria-label="近 7 日處理量趨勢">
+                            <div class="text-sm text-gray-500 p-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 col-span-full">尚無處理量資料。</div>
+                        </div>
                     </div>
                     <div class="bg-white dark:bg-[#111111] p-5 rounded-xl border border-surface-lightBorder dark:border-surface-darkBorder shadow-sm flex flex-col">
                         <h2 class="font-semibold mb-4 text-sm text-gray-500 flex justify-between">最近文件 <a href="#" class="text-brand-500 font-normal">檢視全部</a></h2>
@@ -382,6 +392,8 @@
                 statRiskHits: document.getElementById('stat-risk-hits'),
                 statRiskNote: document.getElementById('stat-risk-note'),
                 statLocalStorage: document.getElementById('stat-local-storage'),
+                usageTrendTotal: document.getElementById('usage-trend-total'),
+                usageTrendList: document.getElementById('usage-trend-list'),
                 recentFilesList: document.getElementById('recent-files-list'),
                 memUsage: document.getElementById('mem-usage'),
                 memUsageBar: document.getElementById('mem-usage-bar')
@@ -447,7 +459,6 @@
                 renderTools();
                 renderWorkflow();
                 renderHistory();
-                initChart();
                 renderDashboard();
                 bindEvents();
             }
@@ -582,12 +593,6 @@
                     els.html.classList.add('dark');
                 } else {
                     els.html.classList.remove('dark');
-                }
-                // 重新渲染圖表以符合主題
-                if(window.myChart) {
-                    window.myChart.options.scales.x.grid.color = state.theme === 'dark' ? '#27272a' : '#e4e4e7';
-                    window.myChart.options.scales.y.grid.color = state.theme === 'dark' ? '#27272a' : '#e4e4e7';
-                    window.myChart.update();
                 }
             }
 
@@ -744,7 +749,7 @@
                 els.statLocalStorage.innerHTML = formatStorageUsage(localStorageBytes);
                 updateStorageIndicator(localStorageBytes);
                 renderRecentFiles(history);
-                updateUsageChart(history);
+                renderUsageTrend(history);
             }
 
             function renderRecentFiles(history) {
@@ -821,21 +826,33 @@
                 return 'bg-blue-100 text-blue-500';
             }
 
-            function updateUsageChart(history) {
-                if (!window.myChart) return;
+            function renderUsageTrend(history) {
                 const days = Array.from({ length: 7 }, (_, index) => {
                     const date = new Date();
                     date.setDate(date.getDate() - (6 - index));
                     return date;
                 });
-                window.myChart.data.labels = days.map(date => date.toLocaleDateString('zh-TW', { weekday: 'short' }));
-                window.myChart.data.datasets[0].data = days.map(date => {
+                const dailyCounts = days.map(date => {
                     const key = toDateKey(date);
-                    return history
-                        .filter(item => toDateKey(getHistoryDate(item)) === key)
-                        .reduce((sum, item) => sum + getHistoryFileCount(item), 0);
+                    return {
+                        key,
+                        label: date.toLocaleDateString('zh-TW', { weekday: 'short' }),
+                        dateLabel: date.toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' }),
+                        count: history
+                            .filter(item => toDateKey(getHistoryDate(item)) === key)
+                            .reduce((sum, item) => sum + getHistoryFileCount(item), 0)
+                    };
                 });
-                window.myChart.update();
+                const total = dailyCounts.reduce((sum, day) => sum + day.count, 0);
+                els.usageTrendTotal.textContent = String(total);
+                els.usageTrendList.innerHTML = dailyCounts.map(day => `
+                    <div class="rounded-xl border border-surface-lightBorder dark:border-surface-darkBorder bg-gray-50 dark:bg-[#18181b] p-4 text-center">
+                        <div class="text-xs text-gray-500">${escapeHtml(day.label)}</div>
+                        <div class="text-[11px] text-gray-400 mt-1">${escapeHtml(day.dateLabel)}</div>
+                        <div class="text-2xl font-semibold mt-3 ${day.count ? 'text-brand-500' : 'text-gray-400'}">${day.count}</div>
+                        <div class="text-[11px] text-gray-500 mt-1">份文件</div>
+                    </div>
+                `).join('');
             }
 
             function escapeHtml(value) {
@@ -1607,48 +1624,6 @@
                 }, 3000);
             }
 
-            // --- Dashboard 圖表初始化 (Chart.js) ---
-            function initChart() {
-                if (!window.Chart) {
-                    showToast('Chart.js 尚未載入，已略過儀表板圖表', 'warning');
-                    return;
-                }
-                const ctx = document.getElementById('usageChart').getContext('2d');
-                const gridColor = state.theme === 'dark' ? '#27272a' : '#e4e4e7';
-                
-                window.myChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: Array.from({ length: 7 }, (_, index) => {
-                            const date = new Date();
-                            date.setDate(date.getDate() - (6 - index));
-                            return date.toLocaleDateString('zh-TW', { weekday: 'short' });
-                        }),
-                        datasets: [{
-                            label: '處理文件數',
-                            data: Array(7).fill(0),
-                            borderColor: '#0ea5e9',
-                            backgroundColor: 'rgba(14, 165, 233, 0.1)',
-                            borderWidth: 2,
-                            tension: 0.4,
-                            fill: true,
-                            pointBackgroundColor: '#0ea5e9',
-                            pointBorderColor: '#fff',
-                            pointRadius: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            x: { grid: { color: gridColor, drawBorder: false }, ticks: { color: '#71717a' } },
-                            y: { grid: { color: gridColor, drawBorder: false }, ticks: { color: '#71717a' }, beginAtZero: true }
-                        },
-                        interaction: { intersect: false, mode: 'index' }
-                    }
-                });
-            }
         });
     </script>
 </body>
